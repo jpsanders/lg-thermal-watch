@@ -1,0 +1,31 @@
+---
+name: lg-thermal-watch-ci
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - '*'
+  # Run CI manually
+  workflow_dispatch:
+
+jobs:
+  lint:
+    uses: "./.github/workflows/python-checks.yml"
+    secrets:
+      # This will allow installing pip packages from a package repository.
+      package-repo: ${{ secrets.PKG_REPOSITORY }}
+  test:
+    needs: lint
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+    uses: "./.github/workflows/python-tests.yml"
+    with:
+      python-version: ${{ matrix.python-version }}
+      enable-lfs: false
+      checkout-fetch-depth: 1
+    secrets:
+      package-repo: ${{ secrets.PKG_REPOSITORY }}

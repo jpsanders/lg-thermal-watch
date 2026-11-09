@@ -1,0 +1,173 @@
+"""ThinQ agent control interface for the LG heat pump via the LG ThinQ Connect API."""
+
+from __future__ import annotations
+
+import logging
+import os
+from typing import Any
+
+from aiohttp import ClientSession
+
+from thinqconnect import ThinQApi, ThinQAPIException
+
+_LOGGER = logging.getLogger(__name__)
+
+DEFAULT_TEMP_MIN_C = 16.0
+DEFAULT_TEMP_MAX_C = 30.0
+DEFAULT_TARGET_TEMP_C = 22.0
+
+SUPPORTED_HVAC_MODES = ("off", "cool", "heat", "fan", "dry", "auto")
+
+OPERATION_MODE_MAP: dict[str, str] = {
+    "off": "POWER_OFF",
+    "cool": "COOL",
+    "heat": "HEAT",
+    "fan": "FAN",
+    "dry": "DRY",
+    "auto": "AUTO",
+}
+
+
+class ThinQAgentController:
+    """Agent-side control interface to the LG air conditioner via LG ThinQ Connect API."""
+
+    def __init__(
+        self,
+        api: ThinQApi,
+        device_id: str | None = None,
+        *,
+        temp_min_c: float = DEFAULT_TEMP_MIN_C,
+        temp_max_c: float = DEFAULT_TEMP_MAX_C,
+        temp_default_c: float = DEFAULT_TARGET_TEMP_C,
+    ) -> None:
+        """Initialise the controller."""
+        self.api = api
+        self.device_id = device_id
+        self.temp_min_c = temp_min_c
+        self.temp_max_c = temp_max_c
+        self.temp_default_c = temp_default_c
+
+    async def get_device_status(self) -> dict[str, Any] | None:
+        """Read full device status."""
+        return await self.api.async_get_device_status(self.device_id)
+
+    @staticmethod
+    def _extract_temperature(status: dict[str, Any] | None, key: str) -> float | None:
+        """Extract a temperature value (Celsius preferred) from a ThinQ status dict."""
+        status = status or {}
+        value: Any = None
+        units = status.get("temperatureInUnits")
+        entries: list[dict[str, Any]] = []
+        if isinstance(units, list):
+            entries = [unit for unit in units if isinstance(unit, dict)]
+        elif isinstance(units, dict):
+            entries = [units]
+        for entry in entries:
+            if str(entry.get("unit") or "").upper() == "C" and entry.get(key) is not None:
+                value = entry.get(key)
+                break
+        if value is None and isinstance(status.get("temperature"), dict):
+            value = status["temperature"].get(key)
+        try:
+            return float(value) if value is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    async def get_room_temperature(self) -> float | None:
+        """Read measured room temperature (Celsius)."""
+        status = await self.get_device_status() or {}
+        return self._extract_temperature(status, "currentTemperature")
+
+    async def get_target_temperature(self) -> float | None:
+        """Read target temperature (Celsius)."""
+        status = await self.get_device_status() or {}
+        return self._extract_temperature(status, "targetTemperature")
+
+    async def get_energy_consumption(self) -> dict[str, Any] | None:
+        """Optional energy profile/usage via ThinQ API."""
+        return await self.api.async_get_device_energy_profile(self.device_id)
+
+    async def _post_control(self, payload: dict[str, Any]) -> dict[str, Any] | None:
+        """Post a control command (accepted by LG cloud)."""
+        return await self.api.async_post_device_control(self.device_id, payload)
+
+    async def set_target_temperature(self, value_c: float) -> dict[str, Any] | None:
+        """Set target temperature (Celsius); LG requires mode context in the payload."""
+        if not (self.temp_min_c <= value_c <= self.temp_max_c):
+            raise ValueError(f"target temperature {value_c}C outside allowed [{self.temp_min_c}, {self.temp_max_c}]C")
+        status = await self.get_device_status() or {}
+        mode = ((status.get("airConJobMode") or {}).get("currentJobMode")) or "HEAT"
+        payload = {
+            "airConJobMode": {"currentJobMode": mode},
+            "temperatureInUnits": {"targetTemperatureC": int(round(value_c)), "unit": "C"},
+        }
+        return await self._post_control(payload)
+
+    async def set_hvac_mode(self, mode: str) -> dict[str, Any] | None:
+        """Set HVAC mode (off/cool/heat/fan/dry/auto)."""
+        mode_norm = (mode or "").strip().lower()
+        if mode_norm not in OPERATION_MODE_MAP:
+            raise ValueError(f"unsupported hvac mode: {mode}")
+        if mode_norm == "off":
+            payload = {"operation": {"airConOperationMode": "POWER_OFF"}}
+        else:
+            payload = {"airConJobMode": {"currentJobMode": OPERATION_MODE_MAP[mode_norm]}}
+        return await self._post_control(payload)
+
+    async def set_fan_speed(self, speed: str) -> dict[str, Any] | None:
+        """Set fan speed (LOW/MEDIUM/HIGH)."""
+        payload = {"airFlow": {"windStrength": str(speed).upper()}}
+        return await self._post_control(payload)
+
+    async def set_swing_mode(self, mode: str) -> dict[str, Any] | None:
+        """Optional: set swing mode."""
+        payload = {"windDirection": {"airGuideWind": str(mode).lower()}}
+        return await self._post_control(payload)
+
+    async def turn_on(self) -> dict[str, Any] | None:
+        """Turn on (operation power-on)."""
+        payload = {"operation": {"airConOperationMode": "POWER_ON"}}
+        return await self._post_control(payload)
+
+    async def turn_off(self) -> dict[str, Any] | None:
+        """Turn off (operation power-off)."""
+        payload = {"operation": {"airConOperationMode": "POWER_OFF"}}
+        return await self._post_control(payload)
+
+
+def create_thinq_agent_controller(
+    session: ClientSession,
+    *,
+    access_token: str | None = None,
+    client_id: str | None = None,
+    country_code: str | None = None,
+    device_id: str | None = None,
+    temp_min_c: float = DEFAULT_TEMP_MIN_C,
+    temp_max_c: float = DEFAULT_TEMP_MAX_C,
+    temp_default_c: float = DEFAULT_TARGET_TEMP_C,
+) -> ThinQAgentController:
+    """Create the ThinQ agent controller; credentials default to LG_THINQ_* env vars."""
+    token = access_token or os.environ.get("LG_THINQ_ACCESS_TOKEN")
+    cid = client_id or os.environ.get("LG_THINQ_CLIENT_ID")
+    cc = country_code or os.environ.get("LG_THINQ_COUNTRY_CODE")
+    dev = device_id or os.environ.get("LG_THINQ_DEVICE_ID")
+
+    if not token or not cid or not cc:
+        raise RuntimeError(
+            "ThinQ Connect credentials missing: set LG_THINQ_ACCESS_TOKEN, LG_THINQ_CLIENT_ID, LG_THINQ_COUNTRY_CODE"
+        )
+
+    api = ThinQApi(
+        session=session,
+        access_token=token,
+        country_code=cc,
+        client_id=cid,
+        mock_response=False,
+    )
+    return ThinQAgentController(
+        api,
+        device_id=dev,
+        temp_min_c=temp_min_c,
+        temp_max_c=temp_max_c,
+        temp_default_c=temp_default_c,
+    )

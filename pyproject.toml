@@ -1,0 +1,127 @@
+[build-system]
+requires = ["setuptools>=80", "setuptools_scm[toml]>=9"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lg-thermal-watch"
+authors = [
+  { name = "James Phillip Sanders", email = "jpsanders@tuta.io" }
+]
+maintainers = [
+  { name = "James Phillip Sanders", email = "jpsanders@tuta.io" }
+]
+description = "Local AI control and telemetry for the LG PC18SK heat pump via the LG ThinQ Connect API."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+keywords = ["lg", "heat-pump", "hvac", "thinq", "smart-home", "iot", "energy", "python"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Typing :: Typed",
+]
+dependencies = [
+  "aiohttp>=3.9",
+  "thinqconnect==1.0.14",
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.29",
+]
+
+[project.urls]
+Repository = "https://github.com/jpsanders/lg-thermal-watch"
+Issues = "https://github.com/jpsanders/lg-thermal-watch/issues"
+Changelog = "https://github.com/jpsanders/lg-thermal-watch/releases"
+
+[project.optional-dependencies]
+dev = [
+  "bandit[toml]",
+  "black",
+  "build",
+  "darglint",
+  "editorconfig-checker==2.7.2",
+  "flake8",
+  "flake8-pydocstyle",
+  "flake8-tidy-imports",
+  "isort",
+  "mypy>=1.4.1",
+  "pytest",
+  "pytest-cov",
+  "fastapi",
+  "httpx",
+]
+
+[project.scripts]
+lg-thermal-watch = "lg_thermal_watch.api:main"
+
+[tool.setuptools_scm]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+lg_thermal_watch = ["py.typed", "static/*.html"]
+
+[tool.mypy]
+strict = true
+check_untyped_defs = true
+explicit_package_bases = true
+mypy_path = "src"
+cache_dir = "build/.mypy_cache"
+
+[[tool.mypy.overrides]]
+module = []
+ignore_missing_imports = true
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_first_party = ["lg_thermal_watch"]
+
+[tool.black]
+line-length = 120
+include = '\.pyi?$'
+exclude = '''
+/(
+      venv
+    | \.git
+    | \.env
+    | \.venv
+    | \.tox
+    | env
+    | venv
+    | dist
+    | build
+)/
+'''
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+
+[tool.pydocstyle]
+### Ignoring explanation
+# D1 - Missing docstrings (enforced elsewhere)
+# D202 - No blank lines after function docstring
+# D203 - 1 blank line required before class docstring
+# D205 - 1 blank line between summary line and description
+# D212 - Multi-line docstring summary should start at the first line
+# D406 - Section name should end with newline
+# D407 - Missing dashed underline after section
+# D411 - Missing blank line before section
+# D413 - Missing blank line after last section
+ignore = """
+D1,
+D202,D203,D205,D212,
+D400,D406,D407,D411,D413
+"""
+
+[tool.coverage.run]
+data_file = "build/.coverage"
+
+[tool.pytest.ini_options]
+cache_dir = "build/.pytest_cache"
