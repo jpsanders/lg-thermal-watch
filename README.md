@@ -61,6 +61,28 @@ Environment variables consumed by the controller:
 | `LG_THINQ_DEVICE_ID` | LG device id (e.g. the PC18SK air handler) |
 | `LG_THERMAL_WATCH_DB` | SQLite path for temperature readings (default `/tmp/opencode/lg_thinq_room_temps.db`) |
 | `LG_THERMAL_WATCH_NIGHTWATCH_CONFIG` | Night watch JSON config path (default `/tmp/opencode/lg_thermal_watch_nightwatch.json`) |
+| `LG_THERMAL_WATCH_HOST` | Bind host for uvicorn (default `127.0.0.1`; use `0.0.0.0` to expose on LAN / Tailscale) |
+| `LG_THERMAL_WATCH_PORT` | Bind port (default `8000`) |
+
+## Exposing on Tailscale
+
+The dashboard binds to `127.0.0.1:8000` by default. To reach it from your Tailscale network, bind to all interfaces so Tailscale can route to the machine's Tailscale IP:
+
+```bash
+# On the host machine
+export LG_THERMAL_WATCH_HOST=0.0.0.0
+export LG_THERMAL_WATCH_PORT=8000
+make init-dev   # or: pip install -e .
+lg-thermal-watch   # runs uvicorn on 0.0.0.0:8000
+```
+
+Then open `http://<your-tailscale-ip>:8000` from any device on your Tailnet. Find your Tailscale IP with:
+
+```bash
+tailscale ip
+```
+
+> ⚠️ Binding to `0.0.0.0` exposes the control API to anyone who can reach your Tailscale IP. Since Tailscale is a private mesh network, only your joined devices can reach it — but do not expose this port to the public internet.
 
 ## API
 
@@ -68,7 +90,7 @@ Environment variables consumed by the controller:
 | --- | --- | --- |
 | GET | `/api/health` | Health check |
 | GET | `/api/status` | Live device status |
-| GET | `/api/temps` | Temperature readings + min/max over an optional window (`?start=...&end=...`) |
+| GET | `/api/temps` | Temperature readings + min/max over an optional window (`?start=...&end=...`) or preset timeline (`?timeline=24h|7d|30d`) |
 | POST | `/api/nightwatch/config` | Update night watch settings (body: `NightWatchConfig`) |
 | POST | `/api/nightwatch/start` | Start the night watch |
 | POST | `/api/nightwatch/stop` | Stop the night watch |

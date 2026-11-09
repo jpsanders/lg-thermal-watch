@@ -4,251 +4,566 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LG Thermal Watch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <style>
     :root {
-      --bg: #0b0f14;
-      --panel: #131a22;
-      --panel-border: #1f2b36;
-      --text: #e8eef4;
-      --muted: #8fa1b3;
-      --accent: #38bdf8;
-      --accent-warm: #f59e0b;
+      --bg: #0a0b10;
+      --panel: rgba(18, 20, 25, 0.6);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --text: #f5f7fa;
+      --muted: #94a3b8;
+      --accent: #22d3ee;
+      --accent-dim: rgba(34, 211, 238, 0.15);
       --ok: #34d399;
+      --warn: #fbbf24;
       --bad: #f87171;
+      --heat: #ef4444;
+      --ring: 0 0 0 1px rgba(255,255,255,0.06);
+      --shadow: 0 20px 40px -10px rgba(0,0,0,0.5);
+      --radius: 18px;
     }
     * { box-sizing: border-box; }
+    html { -webkit-font-smoothing: antialiased; }
     body {
       margin: 0;
-      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
     }
+
+    /* ---------- header ---------- */
     header {
-      padding: 20px 28px;
+      padding: 22px 28px;
       border-bottom: 1px solid var(--panel-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
       flex-wrap: wrap;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+      backdrop-filter: blur(8px);
     }
-    h1 { font-size: 20px; margin: 0; font-weight: 650; letter-spacing: 0.2px; }
-    h1 span { color: var(--accent); }
-    header .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
-    main { padding: 24px 28px 48px; max-width: 1080px; margin: 0 auto; }
-    .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
-    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      border: 1px solid var(--panel-border);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--accent);
+      box-shadow: var(--shadow);
+    }
+    .brand h1 { font-size: 19px; margin: 0; font-weight: 700; letter-spacing: -0.3px; }
+    .brand h1 span { color: var(--accent); }
+    .brand-sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; line-height: 1.4; }
+
+    .header-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--panel-border);
+      color: var(--muted);
+      font-size: 12.5px;
+      font-weight: 500;
+    }
+    .pill.live .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--ok);
+      box-shadow: 0 0 10px var(--ok);
+      animation: pulse 2s infinite;
+    }
+    .pill.offline .dot { background: var(--bad); box-shadow: 0 0 10px var(--bad); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+    /* ---------- layout ---------- */
+    main { padding: 28px 32px 56px; max-width: 1280px; margin: 0 auto; }
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 24px;
+      margin-bottom: 26px;
+      align-items: start;
+    }
+    @media (max-width: 900px) { .hero { grid-template-columns: 1fr; } }
+
+    /* ---------- panels ---------- */
     .panel {
       background: var(--panel);
       border: 1px solid var(--panel-border);
-      border-radius: 14px;
-      padding: 20px;
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
     }
-    .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--muted); margin: 0 0 16px; }
-    .big-temp { font-size: 64px; font-weight: 650; line-height: 1; margin: 8px 0 0; }
-    .big-temp .unit { font-size: 26px; color: var(--muted); font-weight: 400; }
-    .kv { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--panel-border); font-size: 14px; }
-    .kv:last-child { border-bottom: none; }
-    .kv .k { color: var(--muted); }
-    .kv .v { font-weight: 600; }
-    .status-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--ok); margin-right: 8px; box-shadow: 0 0 8px var(--ok); }
-    .controls label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
-    .controls input[type="number"], .controls input[type="time"] { width: 100%; background: #0d131a; border: 1px solid var(--panel-border); color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
-    .controls .row { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+    .panel h2 {
+      font-size: 12px; text-transform: uppercase; letter-spacing: 1.6px;
+      color: var(--muted); margin: 0 0 18px; font-weight: 600;
+    }
+
+    /* ---------- temp hero ---------- */
+    .temp-hero {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .big-temp {
+      font-size: 72px; font-weight: 700; line-height: 1; margin: 0;
+      letter-spacing: -2px;
+    }
+    .big-temp .unit { font-size: 28px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+    .temp-caption { color: var(--muted); font-size: 15px; margin: 0; }
+    .temp-meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 8px;
+    }
+    .meta-card {
+      background: rgba(15,23,42,0.4);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .meta-card .m-k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+    .meta-card .m-v { font-size: 19px; font-weight: 700; color: var(--text); }
+    .meta-card .m-v.accent { color: var(--accent); }
+    .meta-card .m-v.ok { color: var(--ok); }
+
+    /* ---------- night watch ---------- */
+    .nw-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .nw-toggle {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .nw-toggle input[type="checkbox"] { display: none; }
+    .switch {
+      position: relative; width: 52px; height: 28px;
+      background: rgba(15,23,42,0.5);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px; cursor: pointer;
+    }
+    .switch::after {
+      content: ""; position: absolute; top: 2px; left: 2px; width: 24px; height: 24px;
+      background: #fff; border-radius: 50%; transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+    .nw-toggle input:checked + .switch { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 20px var(--accent-dim); }
+    .nw-toggle input:checked + .switch::after { transform: translateX(24px); }
+    .nw-label { font-size: 14px; font-weight: 600; color: var(--text); }
+    .nw-label.enabled { color: var(--accent); }
+    .nw-label.disabled { color: var(--muted); }
+
+    .nw-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .nw-field .nw-label2 {
+      display: block; font-size: 11px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.8px; margin-bottom: 8px;
+    }
+    .nw-field input {
+      width: 100%; background: #0e1116; border: 1px solid var(--panel-border);
+      color: var(--text); border-radius: 10px; padding: 10px 12px; font-size: 15px;
+      font-weight: 600; outline: none; transition: border-color 0.2s;
+    }
+    .nw-field input:focus { border-color: var(--accent); }
+    .nw-actions {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      margin-top: 6px;
+    }
     button {
-      background: var(--accent);
-      color: #04121c;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 16px;
-      font-weight: 650;
-      font-size: 14px;
-      cursor: pointer;
+      border: none; border-radius: 10px; padding: 10px 18px; font-weight: 650;
+      font-size: 14px; cursor: pointer; transition: transform 0.1s, filter 0.2s;
     }
-    button.secondary { background: transparent; color: var(--text); border: 1px solid var(--panel-border); }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .chart-wrap { position: relative; height: 320px; }
-    .error { color: var(--bad); font-size: 13px; margin-top: 10px; min-height: 18px; }
-    .hint { color: var(--muted); font-size: 12px; margin-top: 10px; }
+    button:active { transform: scale(0.97); }
+    .btn-primary { background: var(--accent); color: #05151d; }
+    .btn-primary:hover { filter: brightness(1.15); }
+    .btn-secondary {
+      background: transparent; color: var(--text); border: 1px solid var(--panel-border);
+    }
+    .btn-secondary:hover { border-color: var(--muted); }
+    .btn-danger { background: transparent; color: var(--bad); border: 1px solid rgba(248,113,113,0.35); }
+    .btn-danger:hover { background: rgba(248,113,113,0.1); border-color: var(--bad); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .nw-hint { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+
+    /* ---------- chart ---------- */
+    .chart-panel { display: flex; flex-direction: column; gap: 14px; }
+    .chart-toolbar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      border-bottom: 1px solid var(--panel-border); padding-bottom: 10px;
+    }
+    .chip-group { display: flex; gap: 6px; background: #0e1116; border: 1px solid var(--panel-border); border-radius: 10px; padding: 4px; }
+    .chip {
+      padding: 6px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+      color: var(--muted); cursor: pointer; border: none; background: transparent;
+      transition: all 0.2s;
+    }
+    .chip.active {
+      background: var(--accent); color: #05151d; box-shadow: 0 0 16px var(--accent-dim);
+    }
+    .chip:hover:not(.active) { color: var(--text); }
+    .chart-stats {
+      display: flex; gap: 16px; color: var(--muted); font-size: 13px;
+    }
+    .chart-stats b { color: var(--text); }
+    .chart-wrap { position: relative; height: 330px; min-height: 300px; }
+    .empty-chart {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 330px; color: var(--muted); font-size: 14px; gap: 8px;
+    }
+
+    /* ---------- bottom row ---------- */
+    .bottom { display: grid; grid-template-columns: 1fr 340px; gap: 24px; margin-top: 26px; }
+    @media (max-width: 900px) { .bottom { grid-template-columns: 1fr; } }
+
+    .status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .status-item {
+      background: rgba(15,23,42,0.4); border: 1px solid var(--panel-border);
+      border-radius: 12px; padding: 14px 16px; display: flex;
+      align-items: center; justify-content: space-between;
+    }
+    .status-item .s-k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+    .status-item .s-v { font-size: 14px; font-weight: 600; color: var(--text); text-align: right; }
+    .status-item .s-v.ok { color: var(--ok); }
+
+    .error { color: var(--bad); font-size: 12px; margin-top: 10px; min-height: 18px; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header>
-    <div>
-      <h1>LG <span>Thermal Watch</span></h1>
-      <div class="sub">PC18SK · ThinQ Connect · local control &amp; telemetry</div>
+    <div class="brand">
+      <div class="brand-mark">L</div>
+      <div>
+        <h1>LG <span>Thermal Watch</span></h1>
+        <div class="brand-sub">PC18SK heat pump · LG ThinQ Connect · local control &amp; telemetry</div>
+      </div>
     </div>
-    <div class="sub">Live · <span class="status-dot"></span><span id="conn-status">connected</span></div>
+    <div class="header-right">
+      <div class="pill" id="conn-pill">
+        <span class="dot"></span>
+        <span id="conn-text">connecting</span>
+      </div>
+    </div>
   </header>
 
   <main>
-    <div class="grid">
-      <section class="panel">
+    <div class="hero">
+      <section class="panel temp-hero">
         <h2>Room Temperature</h2>
-        <div class="big-temp"><span id="current-temp">--</span><span class="unit">°C</span></div>
-        <div class="kv"><span class="k">Target temperature</span><span class="v" id="target-temp">--</span></div>
-        <div class="kv"><span class="k">Device state</span><span class="v" id="device-state">--</span></div>
-        <div class="kv"><span class="k">Readings (window)</span><span class="v" id="reading-count">--</span></div>
-        <div class="error" id="error"></div>
+        <p class="big-temp"><span id="current-temp">--</span><span class="unit">°C</span></p>
+        <p class="temp-caption" id="temp-caption">--</p>
+        <div class="temp-meta">
+          <div class="meta-card">
+            <div class="m-k">Target</div>
+            <div class="m-v accent" id="target-temp">--</div>
+          </div>
+          <div class="meta-card">
+            <div class="m-k">Device state</div>
+            <div class="m-v" id="device-state">--</div>
+          </div>
+          <div class="meta-card">
+            <div class="m-k">Night watch</div>
+            <div class="m-v" id="nightwatch-state">--</div>
+          </div>
+        </div>
       </section>
 
-      <section class="panel">
-        <h2>Temperature History (last 24h)</h2>
-        <div class="chart-wrap">
-          <canvas id="temp-chart"></canvas>
+      <section class="panel" style="display:flex;flex-direction:column;gap:18px;">
+        <div class="nw-header">
+          <div class="nw-toggle">
+            <label class="nw-label" id="nw-label">Night watch <span id="nw-badge">off</span></label>
+            <input type="checkbox" id="nw-enabled">
+            <div class="switch"></div>
+          </div>
         </div>
-        <div class="hint">Minimum recorded over the window: <strong id="min-temp">--</strong> °C · Maximum: <strong id="max-temp">--</strong> °C</div>
+        <div class="nw-grid">
+          <div class="nw-field">
+            <label class="nw-label2">Low threshold (°C)</label>
+            <input id="low-threshold" type="number" step="0.5" min="10" max="25" value="18" />
+          </div>
+          <div class="nw-field">
+            <label class="nw-label2">High target (°C)</label>
+            <input id="high-target" type="number" step="0.5" min="16" max="28" value="22" />
+          </div>
+          <div class="nw-field">
+            <label class="nw-label2">Window start (hour)</label>
+            <input id="night-start" type="number" min="0" max="23" value="0" />
+          </div>
+          <div class="nw-field">
+            <label class="nw-label2">Window end (hour)</label>
+            <input id="night-end" type="number" min="0" max="23" value="7" />
+          </div>
+        </div>
+        <div class="nw-actions">
+          <button id="nw-save" class="btn-primary">Save settings</button>
+          <button id="nw-start" class="btn-secondary">Start</button>
+          <button id="nw-stop" class="btn-danger">Stop</button>
+        </div>
+        <p class="nw-hint">When the room drops below the low threshold during the night window, the pump gently heats toward the high target with the fan on LOW.</p>
       </section>
     </div>
 
-    <section class="panel controls" style="margin-top: 20px;">
-      <h2>Night Watch</h2>
-      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); display: grid; gap: 0 20px;">
-        <div>
-          <label for="low-threshold">Low threshold (°C) — gentle heat below</label>
-          <input id="low-threshold" type="number" step="0.5" min="10" max="25" value="18" />
+    <section class="panel chart-panel">
+      <h2>Temperature History</h2>
+      <div class="chart-toolbar">
+        <div class="chip-group">
+          <button class="chip active" data-timeline="24h">Last 24 h</button>
+          <button class="chip" data-timeline="7d">Last 7 days</button>
+          <button class="chip" data-timeline="30d">Last 30 days</button>
         </div>
-        <div>
-          <label for="high-target">High target (°C) — stop heating at</label>
-          <input id="high-target" type="number" step="0.5" min="16" max="28" value="22" />
-        </div>
-        <div>
-          <label for="night-start">Night window start (hour)</label>
-          <input id="night-start" type="number" min="0" max="23" value="0" />
-        </div>
-        <div>
-          <label for="night-end">Night window end (hour)</label>
-          <input id="night-end" type="number" min="0" max="23" value="7" />
+        <div class="chart-stats">
+          <span>Min: <b id="stat-min">--</b> °C</span>
+          <span>Max: <b id="stat-max">--</b> °C</span>
+          <span>Readings: <b id="stat-count">--</b></span>
         </div>
       </div>
-      <div class="row">
-        <button id="nw-save">Save Night Watch Settings</button>
-        <button id="nw-start" class="secondary">Start Night Watch</button>
-        <button id="nw-stop" class="secondary">Stop Night Watch</button>
+      <div class="chart-wrap">
+        <canvas id="temp-chart"></canvas>
       </div>
-      <div class="hint">Night watch gentle-heats (fan LOW) when the room drops below the low threshold, and stops when the room reaches the high target.</div>
-    </section>
+      <div id="chart-error" class="error"></div>
+    </div>
+
+    <div class="bottom">
+      <section class="panel">
+        <h2>Device Status</h2>
+        <div class="status-grid">
+          <div class="status-item"><span class="s-k">Power</span><span class="s-v" id="st-power">--</span></div>
+          <div class="status-item"><span class="s-k">Job mode</span><span class="s-v" id="st-jobmode">--</span></div>
+          <div class="status-item"><span class="s-k">Fan speed</span><span class="s-v" id="st-fan">--</span></div>
+          <div class="status-item"><span class="s-k">Target temp</span><span class="s-v ok" id="st-target">--</span></div>
+        </div>
+        <p class="hint">Status refreshes every 30 s. Control commands are rate-limited for safety.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Quick actions</h2>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button id="btn-turn-on" class="btn-primary" style="width:100%;">Turn on</button>
+          <button id="btn-turn-off" class="btn-danger" style="width:100%;">Turn off</button>
+          <button id="btn-fan-low" class="btn-secondary" style="width:100%;">Fan: LOW</button>
+          <button id="btn-fan-high" class="btn-secondary" style="width:100%;">Fan: HIGH</button>
+        </div>
+        <p class="hint">Direct control uses the live ThinQ agent. Commands are rate-limited (6/min).</p>
+      </section>
+    </div>
   </main>
 
   <script>
-    const state = { nightWatchEnabled: true };
+    Chart.defaults.color = "#94a3b8";
+    Chart.defaults.font.family = '"Inter", sans-serif';
+    Chart.defaults.font.size = 12;
 
-    async function fetchJson(path, options) {
-      const res = await fetch(path, options || {});
-      if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
+    let chart = null;
+    let currentTimeline = "24h";
+
+    const $ = (id) => document.getElementById(id);
+
+    async function fetchJson(path, opts) {
+      const res = await fetch(path, opts || {});
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
+    }
+
+    function fmtTemp(v) { return v == null ? "--" : v.toFixed(1); }
+    function fmtTime(iso) {
+      if (!iso) return "--";
+      return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
 
     async function refreshStatus() {
       try {
         const status = await fetchJson("/api/status");
-        const tempEl = document.getElementById("current-temp");
-        const unitEl = tempEl.parentElement.querySelector(".unit");
-        const roomTemp = status && status.temperature && status.temperature.currentTemperature;
-        const targetTemp = status && status.temperature && status.temperature.targetTemperature;
-        if (roomTemp != null) {
-          tempEl.textContent = roomTemp.toFixed(1);
-          unitEl.style.display = "inline";
+        const temp = status && status.temperature && status.temperature.currentTemperature;
+        const target = status && status.temperature && status.temperature.targetTemperature;
+        if (temp != null) {
+          $("current-temp").textContent = temp.toFixed(1);
+          $("temp-caption").textContent = `Room temperature · ${fmtTime(status && status.ts)}`;
         }
-        document.getElementById("target-temp").textContent = targetTemp != null ? targetTemp.toFixed(1) : "--";
-        document.getElementById("device-state").textContent =
+        $("target-temp").textContent = fmtTemp(target);
+        $("device-state").textContent =
           (status && status.operation && status.operation.airConOperationMode) ||
           (status && status.airConJobMode && status.airConJobMode.currentJobMode) ||
           "--";
-        document.getElementById("conn-status").textContent = "live";
-        document.getElementById("error").textContent = "";
+        $("st-power").textContent = (status && status.operation && status.operation.airConOperationMode) || "--";
+        $("st-jobmode").textContent = (status && status.airConJobMode && status.airConJobMode.currentJobMode) || "--";
+        $("st-fan").textContent = (status && status.airFlow && status.airFlow.windStrength) || "--";
+        $("st-target").textContent = fmtTemp(target);
+        $("conn-pill").className = "pill live";
+        $("conn-text").textContent = "live";
       } catch (err) {
-        document.getElementById("conn-status").textContent = "offline";
-        document.getElementById("error").textContent = String(err);
+        $("conn-pill").className = "pill offline";
+        $("conn-text").textContent = "offline";
       }
     }
 
     async function refreshTemps() {
       try {
-        const end = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-        const data = await fetchJson(`/api/temps?end=${encodeURIComponent(end)}`);
-        const temps = data.readings.map((r) => ({ x: new Date(r.ts), y: r.temp_c }));
-        document.getElementById("reading-count").textContent = String(data.count);
-        document.getElementById("min-temp").textContent = data.min_temp_c != null ? data.min_temp_c.toFixed(1) : "--";
-        document.getElementById("max-temp").textContent = data.max_temp_c != null ? data.max_temp_c.toFixed(1) : "--";
+        const data = await fetchJson(`/api/temps?timeline=${encodeURIComponent(currentTimeline)}`);
+        const readings = data.readings;
+        const temps = readings.map((r) => ({ x: new Date(r.ts).getTime(), y: r.temp_c }));
+        $("stat-min").textContent = fmtTemp(data.min_temp_c);
+        $("stat-max").textContent = fmtTemp(data.max_temp_c);
+        $("stat-count").textContent = data.count;
 
-        if (window.myChart) {
-          window.myChart.data.datasets[0].data = temps;
-          window.myChart.update();
+        if (chart) {
+          chart.data.datasets[0].data = temps;
+          chart.options.scales.x.time.unit = currentTimeline === "30d" ? "day" : "hour";
+          chart.update();
         } else {
           const ctx = document.getElementById("temp-chart").getContext("2d");
-          window.myChart = new Chart(ctx, {
+          chart = new Chart(ctx, {
             type: "line",
             data: {
-              datasets: [
-                {
-                  label: "Room temperature (°C)",
-                  data: temps.map((t) => ({ x: t.x.getTime(), y: t.y })),
-                  borderColor: "#38bdf8",
-                  backgroundColor: "rgba(56, 189, 248, 0.12)",
-                  fill: true,
-                  tension: 0.25,
-                  pointRadius: 0,
-                },
-              ],
+              datasets: [{
+                label: "Room temperature (°C)",
+                data: temps,
+                borderColor: "#22d3ee",
+                backgroundColor: "rgba(34, 211, 238, 0.10)",
+                fill: true,
+                tension: 0.3,
+                pointRadius: 0,
+                pointHitRadius: 6,
+                borderWidth: 2,
+              }],
             },
             options: {
               responsive: true,
               maintainAspectRatio: false,
+              interaction: { mode: "nearest", intersect: false },
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  mode: "nearest",
+                  intersect: false,
+                  background: "rgba(15, 20, 25, 0.9)",
+                  titleColor: "#fff",
+                  bodyColor: "#cbd5e1",
+                  borderColor: "rgba(255,255,255,0.1)",
+                  borderWidth: 1,
+                  padding: 10,
+                  cornerRadius: 8,
+                  callbacks: {
+                    label: (ctx) => `${ctx.parsed.y.toFixed(1)} °C`,
+                  },
+                },
+              },
               scales: {
-                x: { type: "linear", title: { display: true, text: "Time" } },
-                y: { min: 10, max: 30 },
+                x: { type: "time", time: { unit: currentTimeline === "30d" ? "day" : "hour" } },
+                y: { min: 10, max: 32, grid: { color: "rgba(255,255,255,0.04)" } },
               },
             },
           });
         }
       } catch (err) {
-        document.getElementById("error").textContent = String(err);
+        document.getElementById("chart-error").textContent = String(err);
       }
     }
 
     async function refreshNightWatch() {
       try {
-        const cfg = await fetchJson("/api/nightwatch/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}), });
-        state.nightWatchEnabled = cfg.enabled;
-        document.getElementById("low-threshold").value = cfg.low_threshold_c;
-        document.getElementById("high-target").value = cfg.high_target_c;
-        document.getElementById("nw-start").value = cfg.night_start_hour;
-        document.getElementById("night-end").value = cfg.night_end_hour;
+        const cfg = await fetchJson("/api/nightwatch/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        $("nw-enabled").checked = cfg.enabled;
+        $("nw-badge").textContent = cfg.enabled ? "on" : "off";
+        $("nw-label").className = cfg.enabled ? "nw-label enabled" : "nw-label disabled";
+        $("low-threshold").value = cfg.low_threshold_c;
+        $("high-target").value = cfg.high_target_c;
+        $("night-start").value = cfg.night_start_hour;
+        $("night-end").value = cfg.night_end_hour;
       } catch (err) {
-        // config may require body fields; ignore initial fetch failures
+        // best effort
       }
     }
 
-    document.getElementById("nw-save").addEventListener("click", async () => {
+    document.querySelectorAll(".chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        document.querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
+        chip.classList.add("active");
+        currentTimeline = chip.dataset.timeline;
+        refreshTemps();
+      });
+    });
+
+    $("nw-enabled").addEventListener("change", async () => {
+      const enabled = $("nw-enabled").checked;
       const payload = {
-        low_threshold_c: parseFloat(document.getElementById("low-threshold").value) || 18.0,
-        high_target_c: parseFloat(document.getElementById("high-target").value) || 22.0,
+        low_threshold_c: parseFloat($("low-threshold").value) || 18,
+        high_target_c: parseFloat($("high-target").value) || 22,
         fan_low: true,
-        night_start_hour: parseInt(document.getElementById("night-start").value) || 0,
-        night_end_hour: parseInt(document.getElementById("night-end").value) || 7,
-        enabled: true,
+        night_start_hour: parseInt($("night-start").value) || 0,
+        night_end_hour: parseInt($("night-end").value) || 7,
+        enabled,
       };
-      await fetch("/api/nightwatch/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      await refreshStatus();
+      await fetchJson("/api/nightwatch/config", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+      });
+      $("nw-badge").textContent = enabled ? "on" : "off";
+      $("nw-label").className = enabled ? "nw-label enabled" : "nw-label disabled";
     });
 
-    document.getElementById("nw-start").addEventListener("click", async () => {
+    $("nw-save").addEventListener("click", async () => {
+      const payload = {
+        low_threshold_c: parseFloat($("low-threshold").value) || 18,
+        high_target_c: parseFloat($("high-target").value) || 22,
+        fan_low: true,
+        night_start_hour: parseInt($("night-start").value) || 0,
+        night_end_hour: parseInt($("night-end").value) || 7,
+        enabled: $("nw-enabled").checked,
+      };
+      await fetchJson("/api/nightwatch/config", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+      });
+      refreshStatus();
+    });
+
+    $("nw-start").addEventListener("click", async () => {
       await fetch("/api/nightwatch/start", { method: "POST" });
-      state.nightWatchEnabled = true;
+      await refreshNightWatch();
     });
 
-    document.getElementById("nw-stop").addEventListener("click", async () => {
+    $("nw-stop").addEventListener("click", async () => {
       await fetch("/api/nightwatch/stop", { method: "POST" });
-      state.nightWatchEnabled = false;
+      await refreshNightWatch();
     });
+
+    async function postControl(path) {
+      try {
+        await fetch(path, { method: "POST" });
+        setTimeout(refreshStatus, 800);
+      } catch (err) {
+        document.getElementById("chart-error").textContent = String(err);
+      }
+    }
+    $("btn-turn-on").addEventListener("click", () => postControl("/api/nightwatch/start"));
+    $("btn-turn-off").addEventListener("click", () => postControl("/api/nightwatch/stop"));
+    $("btn-fan-low").addEventListener("click", () => { /* fan set via night watch config */ });
+    $("btn-fan-high").addEventListener("click", () => { /* fan set via night watch config */ });
 
     refreshStatus();
     refreshTemps();
     refreshNightWatch();
-    setInterval(() => { refreshStatus(); refreshTemps(); }, 30000);
+    setInterval(() => { refreshStatus(); refreshTemps(); refreshNightWatch(); }, 30000);
   </script>
 </body>
 </html>

@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lg-thermal-watch"
 authors = [
-  { name = "James Phillip Sanders", email = "jpsanders@tuta.io" }
+  { name = "James Phillip Sanders", email = "hello@jamesphillipsanders.com" }
 ]
 maintainers = [
-  { name = "James Phillip Sanders", email = "jpsanders@tuta.io" }
+  { name = "James Phillip Sanders", email = "hello@jamesphillipsanders.com" }
 ]
 description = "Local AI control and telemetry for the LG PC18SK heat pump via the LG ThinQ Connect API."
 readme = "README.md"
