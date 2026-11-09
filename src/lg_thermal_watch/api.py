@@ -126,6 +126,19 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=503, detail="device status unavailable")
         return status
 
+    @app.get("/api/nightwatch/config")
+    async def nightwatch_config_get() -> dict[str, Any]:
+        """Return current night watch settings."""
+        watch = get_night_watch()
+        return {
+            "enabled": watch.is_running,
+            "low_threshold_c": watch.low_threshold_c,
+            "high_target_c": watch.high_target_c,
+            "fan_low": watch.fan_low,
+            "night_start_hour": watch.night_start_hour,
+            "night_end_hour": watch.night_end_hour,
+        }
+
     @app.post("/api/nightwatch/config")
     async def nightwatch_config(config: NightWatchConfig) -> dict[str, Any]:
         """Update night watch settings and (re)start or stop the watch."""
@@ -146,6 +159,9 @@ def create_app() -> FastAPI:
             "enabled": config.enabled,
             "low_threshold_c": config.low_threshold_c,
             "high_target_c": config.high_target_c,
+            "fan_low": config.fan_low,
+            "night_start_hour": config.night_start_hour,
+            "night_end_hour": config.night_end_hour,
         }
 
     @app.post("/api/nightwatch/start")

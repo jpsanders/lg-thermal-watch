@@ -1,569 +1,269 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LG Thermal Watch</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <style>
-    :root {
-      --bg: #0a0b10;
-      --panel: rgba(18, 20, 25, 0.6);
-      --panel-border: rgba(255, 255, 255, 0.08);
-      --text: #f5f7fa;
-      --muted: #94a3b8;
-      --accent: #22d3ee;
-      --accent-dim: rgba(34, 211, 238, 0.15);
-      --ok: #34d399;
-      --warn: #fbbf24;
-      --bad: #f87171;
-      --heat: #ef4444;
-      --ring: 0 0 0 1px rgba(255,255,255,0.06);
-      --shadow: 0 20px 40px -10px rgba(0,0,0,0.5);
-      --radius: 18px;
-    }
-    * { box-sizing: border-box; }
-    html { -webkit-font-smoothing: antialiased; }
-    body {
-      margin: 0;
-      font-family: "Inter", system-ui, -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
-
-    /* ---------- header ---------- */
-    header {
-      padding: 22px 28px;
-      border-bottom: 1px solid var(--panel-border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
-      backdrop-filter: blur(8px);
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .brand-mark {
-      width: 34px;
-      height: 34px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #0f172a, #1e293b);
-      border: 1px solid var(--panel-border);
-      display: grid;
-      place-items: center;
-      font-weight: 700;
-      font-size: 16px;
-      color: var(--accent);
-      box-shadow: var(--shadow);
-    }
-    .brand h1 { font-size: 19px; margin: 0; font-weight: 700; letter-spacing: -0.3px; }
-    .brand h1 span { color: var(--accent); }
-    .brand-sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; line-height: 1.4; }
-
-    .header-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-    .pill {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      border-radius: 20px;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid var(--panel-border);
-      color: var(--muted);
-      font-size: 12.5px;
-      font-weight: 500;
-    }
-    .pill.live .dot {
-      width: 7px; height: 7px; border-radius: 50%; background: var(--ok);
-      box-shadow: 0 0 10px var(--ok);
-      animation: pulse 2s infinite;
-    }
-    .pill.offline .dot { background: var(--bad); box-shadow: 0 0 10px var(--bad); }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-
-    /* ---------- layout ---------- */
-    main { padding: 28px 32px 56px; max-width: 1280px; margin: 0 auto; }
-    .hero {
-      display: grid;
-      grid-template-columns: 1fr 420px;
-      gap: 24px;
-      margin-bottom: 26px;
-      align-items: start;
-    }
-    @media (max-width: 900px) { .hero { grid-template-columns: 1fr; } }
-
-    /* ---------- panels ---------- */
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--panel-border);
-      border-radius: var(--radius);
-      padding: 24px;
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(12px);
-    }
-    .panel h2 {
-      font-size: 12px; text-transform: uppercase; letter-spacing: 1.6px;
-      color: var(--muted); margin: 0 0 18px; font-weight: 600;
-    }
-
-    /* ---------- temp hero ---------- */
-    .temp-hero {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    .big-temp {
-      font-size: 72px; font-weight: 700; line-height: 1; margin: 0;
-      letter-spacing: -2px;
-    }
-    .big-temp .unit { font-size: 28px; color: var(--muted); font-weight: 400; margin-left: 6px; }
-    .temp-caption { color: var(--muted); font-size: 15px; margin: 0; }
-    .temp-meta {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
-      margin-top: 8px;
-    }
-    .meta-card {
-      background: rgba(15,23,42,0.4);
-      border: 1px solid var(--panel-border);
-      border-radius: 12px;
-      padding: 14px 16px;
-    }
-    .meta-card .m-k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
-    .meta-card .m-v { font-size: 19px; font-weight: 700; color: var(--text); }
-    .meta-card .m-v.accent { color: var(--accent); }
-    .meta-card .m-v.ok { color: var(--ok); }
-
-    /* ---------- night watch ---------- */
-    .nw-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-    .nw-toggle {
-      display: flex; align-items: center; gap: 10px;
-    }
-    .nw-toggle input[type="checkbox"] { display: none; }
-    .switch {
-      position: relative; width: 52px; height: 28px;
-      background: rgba(15,23,42,0.5);
-      border: 1px solid var(--panel-border);
-      border-radius: 14px; cursor: pointer;
-    }
-    .switch::after {
-      content: ""; position: absolute; top: 2px; left: 2px; width: 24px; height: 24px;
-      background: #fff; border-radius: 50%; transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
-    }
-    .nw-toggle input:checked + .switch { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 20px var(--accent-dim); }
-    .nw-toggle input:checked + .switch::after { transform: translateX(24px); }
-    .nw-label { font-size: 14px; font-weight: 600; color: var(--text); }
-    .nw-label.enabled { color: var(--accent); }
-    .nw-label.disabled { color: var(--muted); }
-
-    .nw-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 14px;
-      margin-bottom: 18px;
-    }
-    .nw-field .nw-label2 {
-      display: block; font-size: 11px; color: var(--muted); text-transform: uppercase;
-      letter-spacing: 0.8px; margin-bottom: 8px;
-    }
-    .nw-field input {
-      width: 100%; background: #0e1116; border: 1px solid var(--panel-border);
-      color: var(--text); border-radius: 10px; padding: 10px 12px; font-size: 15px;
-      font-weight: 600; outline: none; transition: border-color 0.2s;
-    }
-    .nw-field input:focus { border-color: var(--accent); }
-    .nw-actions {
-      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-      margin-top: 6px;
-    }
-    button {
-      border: none; border-radius: 10px; padding: 10px 18px; font-weight: 650;
-      font-size: 14px; cursor: pointer; transition: transform 0.1s, filter 0.2s;
-    }
-    button:active { transform: scale(0.97); }
-    .btn-primary { background: var(--accent); color: #05151d; }
-    .btn-primary:hover { filter: brightness(1.15); }
-    .btn-secondary {
-      background: transparent; color: var(--text); border: 1px solid var(--panel-border);
-    }
-    .btn-secondary:hover { border-color: var(--muted); }
-    .btn-danger { background: transparent; color: var(--bad); border: 1px solid rgba(248,113,113,0.35); }
-    .btn-danger:hover { background: rgba(248,113,113,0.1); border-color: var(--bad); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    .nw-hint { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
-
-    /* ---------- chart ---------- */
-    .chart-panel { display: flex; flex-direction: column; gap: 14px; }
-    .chart-toolbar {
-      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-      border-bottom: 1px solid var(--panel-border); padding-bottom: 10px;
-    }
-    .chip-group { display: flex; gap: 6px; background: #0e1116; border: 1px solid var(--panel-border); border-radius: 10px; padding: 4px; }
-    .chip {
-      padding: 6px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
-      color: var(--muted); cursor: pointer; border: none; background: transparent;
-      transition: all 0.2s;
-    }
-    .chip.active {
-      background: var(--accent); color: #05151d; box-shadow: 0 0 16px var(--accent-dim);
-    }
-    .chip:hover:not(.active) { color: var(--text); }
-    .chart-stats {
-      display: flex; gap: 16px; color: var(--muted); font-size: 13px;
-    }
-    .chart-stats b { color: var(--text); }
-    .chart-wrap { position: relative; height: 330px; min-height: 300px; }
-    .empty-chart {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      height: 330px; color: var(--muted); font-size: 14px; gap: 8px;
-    }
-
-    /* ---------- bottom row ---------- */
-    .bottom { display: grid; grid-template-columns: 1fr 340px; gap: 24px; margin-top: 26px; }
-    @media (max-width: 900px) { .bottom { grid-template-columns: 1fr; } }
-
-    .status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .status-item {
-      background: rgba(15,23,42,0.4); border: 1px solid var(--panel-border);
-      border-radius: 12px; padding: 14px 16px; display: flex;
-      align-items: center; justify-content: space-between;
-    }
-    .status-item .s-k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
-    .status-item .s-v { font-size: 14px; font-weight: 600; color: var(--text); text-align: right; }
-    .status-item .s-v.ok { color: var(--ok); }
-
-    .error { color: var(--bad); font-size: 12px; margin-top: 10px; min-height: 18px; }
-    .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>LG Thermal Watch — PC18SK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+:root{
+  --bg:#07090f; --panel:#0f141e; --panel-2:#141b27; --line:#1e2837;
+  --text:#e6eaf2; --muted:#8a95a6; --accent:#22d3ee; --accent-2:#7c3aed;
+  --ok:#34d399; --warn:#f59e0b; --bad:#f87171; --heat:#f43f5e;
+  --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:radial-gradient(1200px 600px at 80% -10%, rgba(124,58,237,.15), transparent), var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+header{position:sticky;top:0;z-index:10;background:rgba(7,9,15,.8);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.hwrap{max-width:1200px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;font-weight:700;color:#001018}
+.brand h1{margin:0;font-size:18px;letter-spacing:-.3px}
+.brand sub{display:block;font-size:11px;color:var(--muted);font-weight:500}
+.status{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok)}
+.dot.off{background:var(--bad);box-shadow:0 0 12px var(--bad)}
+main{max-width:1200px;margin:28px auto;padding:0 20px}
+.grid{display:grid;grid-template-columns: repeat(12,1fr);gap:20px}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+.card h2{margin:0 0 14px;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:600}
+.span-12{grid-column:span 12}
+.span-8{grid-column:span 8}
+.span-4{grid-column:span 4}
+.bigtemp{display:flex;align-items:flex-end;gap:12px}
+.bigtemp .val{font-size:72px;line-height:1;font-weight:700;letter-spacing:-2px;font-family:"JetBrains Mono",monospace}
+.bigtemp .unit{font-size:28px;color:var(--muted);margin-bottom:8px}
+.meta{display:flex;gap:14px;margin-top:16px;flex-wrap:wrap}
+.pill{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:110px}
+.pill kbd{display:block;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.pill v{font-size:18px;font-weight:600;font-family:"JetBrains Mono",monospace}
+.controls{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:12px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.field input, .field select{background:#0a0f18;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;font-size:14px}
+.field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(34,211,238,.15)}
+.toggle{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.switch{position:relative;width:52px;height:30px;background:#0a0f18;border:1px solid var(--line);border-radius:16px;cursor:pointer}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform .2s}
+.switch.on{background:var(--accent);border-color:var(--accent)}
+.switch.on::after{transform:translateX(22px)}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+button{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 14px;font-weight:600;font-size:14px;cursor:pointer;transition:.15s}
+button:hover{transform:translateY(-1px);border-color:#2a3748}
+button.primary{background:linear-gradient(135deg,var(--accent),#7dd3fc);color:#001018;border:none}
+button.danger{border-color:rgba(248,113,113,.4);color:var(--bad)}
+.chips{display:flex;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:6px}
+.chip{background:transparent;border:none;color:var(--muted);padding:6px 12px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer}
+.chip.active{background:var(--accent);color:#001018}
+.stats{display:flex;gap:18px;color:var(--muted);font-size:13px;margin-left:auto}
+.chartwrap{height:360px;position:relative}
+.statusgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.stat{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:14px}
+.stat kbd{display:block;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.stat v{font-size:16px;font-weight:600;font-family:"JetBrains Mono",monospace}
+.hint{color:var(--muted);font-size:12.5px;margin-top:8px}
+@media (max-width:980px){.span-8,.span-4{grid-column:span 12}.controls{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-  <header>
+<header>
+  <div class="hwrap">
     <div class="brand">
-      <div class="brand-mark">L</div>
-      <div>
-        <h1>LG <span>Thermal Watch</span></h1>
-        <div class="brand-sub">PC18SK heat pump · LG ThinQ Connect · local control &amp; telemetry</div>
+      <div class="logo">LG</div>
+      <div><h1>Thermal Watch</h1><sub>PC18SK · ThinQ Connect · local</sub></div>
+    </div>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">connecting…</span></div>
+  </div>
+</header>
+
+<main>
+<div class="grid">
+  <section class="card span-8">
+    <h2>Room</h2>
+    <div class="bigtemp">
+      <div class="val" id="tempVal">--</div>
+      <div class="unit">°C</div>
+    </div>
+    <div id="tempCaption" style="color:var(--muted);font-size:13px;margin-top:4px">—</div>
+    <div class="meta">
+      <div class="pill"><kbd>Target</kbd><v id="targetVal">--</v></div>
+      <div class="pill"><kbd>Mode</kbd><v id="modeVal">--</v></div>
+      <div class="pill"><kbd>Fan</kbd><v id="fanVal">--</v></div>
+      <div class="pill"><kbd>Night watch</kbd><v id="nwBadge">off</v></div>
+    </div>
+  </section>
+
+  <section class="card span-4">
+    <h2>Night Watch</h2>
+    <div class="toggle">
+      <div class="switch" id="nwSwitch"></div>
+      <div style="font-weight:600">Auto-heat 00:00–07:00</div>
+    </div>
+    <div class="controls">
+      <div class="field"><label>Low threshold</label><input id="lowIn" type="number" step="0.5" min="10" max="25"></div>
+      <div class="field"><label>High target</label><input id="highIn" type="number" step="0.5" min="16" max="28"></div>
+      <div class="field"><label>Window start</label><input id="startIn" type="time" step="3600"></div>
+      <div class="field"><label>Window end</label><input id="endIn" type="time" step="3600"></div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="saveBtn">Save settings</button>
+      <button id="startBtn">Start now</button>
+      <button class="danger" id="stopBtn">Stop</button>
+    </div>
+    <div class="hint">When room ≤ low threshold during window, heat gently to high target with fan LOW.</div>
+  </section>
+
+  <section class="card span-12">
+    <h2>Temperature History</h2>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div class="chips">
+        <button class="chip active" data-t="24h">24 h</button>
+        <button class="chip" data-t="7d">7 days</button>
+        <button class="chip" data-t="30d">30 days</button>
+      </div>
+      <div class="stats">
+        <span>Min <b id="sMin">--</b>°C</span>
+        <span>Max <b id="sMax">--</b>°C</span>
+        <span>Points <b id="sCnt">--</b></span>
       </div>
     </div>
-    <div class="header-right">
-      <div class="pill" id="conn-pill">
-        <span class="dot"></span>
-        <span id="conn-text">connecting</span>
-      </div>
+    <div class="chartwrap"><canvas id="chart"></canvas></div>
+  </section>
+
+  <section class="card span-8">
+    <h2>Device Status</h2>
+    <div class="statusgrid">
+      <div class="stat"><kbd>Power</kbd><v id="stPower">--</v></div>
+      <div class="stat"><kbd>Job mode</kbd><v id="stJob">--</v></div>
+      <div class="stat"><kbd>Fan speed</kbd><v id="stFan">--</v></div>
+      <div class="stat"><kbd>Target temp</kbd><v id="stTarget">--</v></div>
     </div>
-  </header>
+  </section>
 
-  <main>
-    <div class="hero">
-      <section class="panel temp-hero">
-        <h2>Room Temperature</h2>
-        <p class="big-temp"><span id="current-temp">--</span><span class="unit">°C</span></p>
-        <p class="temp-caption" id="temp-caption">--</p>
-        <div class="temp-meta">
-          <div class="meta-card">
-            <div class="m-k">Target</div>
-            <div class="m-v accent" id="target-temp">--</div>
-          </div>
-          <div class="meta-card">
-            <div class="m-k">Device state</div>
-            <div class="m-v" id="device-state">--</div>
-          </div>
-          <div class="meta-card">
-            <div class="m-k">Night watch</div>
-            <div class="m-v" id="nightwatch-state">--</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel" style="display:flex;flex-direction:column;gap:18px;">
-        <div class="nw-header">
-          <div class="nw-toggle">
-            <label class="nw-label" id="nw-label">Night watch <span id="nw-badge">off</span></label>
-            <input type="checkbox" id="nw-enabled">
-            <div class="switch"></div>
-          </div>
-        </div>
-        <div class="nw-grid">
-          <div class="nw-field">
-            <label class="nw-label2">Low threshold (°C)</label>
-            <input id="low-threshold" type="number" step="0.5" min="10" max="25" value="18" />
-          </div>
-          <div class="nw-field">
-            <label class="nw-label2">High target (°C)</label>
-            <input id="high-target" type="number" step="0.5" min="16" max="28" value="22" />
-          </div>
-          <div class="nw-field">
-            <label class="nw-label2">Window start (hour)</label>
-            <input id="night-start" type="number" min="0" max="23" value="0" />
-          </div>
-          <div class="nw-field">
-            <label class="nw-label2">Window end (hour)</label>
-            <input id="night-end" type="number" min="0" max="23" value="7" />
-          </div>
-        </div>
-        <div class="nw-actions">
-          <button id="nw-save" class="btn-primary">Save settings</button>
-          <button id="nw-start" class="btn-secondary">Start</button>
-          <button id="nw-stop" class="btn-danger">Stop</button>
-        </div>
-        <p class="nw-hint">When the room drops below the low threshold during the night window, the pump gently heats toward the high target with the fan on LOW.</p>
-      </section>
+  <section class="card span-4">
+    <h2>Quick Actions</h2>
+    <div class="btns" style="flex-direction:column">
+      <button class="primary" id="qaOn">Turn on heating</button>
+      <button id="qaOff">Turn off</button>
     </div>
+    <div class="hint">Commands are rate-limited for safety. Night watch provides automatic gentle heat.</div>
+  </section>
+</div>
+</main>
 
-    <section class="panel chart-panel">
-      <h2>Temperature History</h2>
-      <div class="chart-toolbar">
-        <div class="chip-group">
-          <button class="chip active" data-timeline="24h">Last 24 h</button>
-          <button class="chip" data-timeline="7d">Last 7 days</button>
-          <button class="chip" data-timeline="30d">Last 30 days</button>
-        </div>
-        <div class="chart-stats">
-          <span>Min: <b id="stat-min">--</b> °C</span>
-          <span>Max: <b id="stat-max">--</b> °C</span>
-          <span>Readings: <b id="stat-count">--</b></span>
-        </div>
-      </div>
-      <div class="chart-wrap">
-        <canvas id="temp-chart"></canvas>
-      </div>
-      <div id="chart-error" class="error"></div>
-    </div>
+<script>
+const $ = id => document.getElementById(id);
+let chart, timeline = '24h';
 
-    <div class="bottom">
-      <section class="panel">
-        <h2>Device Status</h2>
-        <div class="status-grid">
-          <div class="status-item"><span class="s-k">Power</span><span class="s-v" id="st-power">--</span></div>
-          <div class="status-item"><span class="s-k">Job mode</span><span class="s-v" id="st-jobmode">--</span></div>
-          <div class="status-item"><span class="s-k">Fan speed</span><span class="s-v" id="st-fan">--</span></div>
-          <div class="status-item"><span class="s-k">Target temp</span><span class="s-v ok" id="st-target">--</span></div>
-        </div>
-        <p class="hint">Status refreshes every 30 s. Control commands are rate-limited for safety.</p>
-      </section>
+function fmt(n){ return n==null? '--' : Number(n).toFixed(1) }
 
-      <section class="panel">
-        <h2>Quick actions</h2>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <button id="btn-turn-on" class="btn-primary" style="width:100%;">Turn on</button>
-          <button id="btn-turn-off" class="btn-danger" style="width:100%;">Turn off</button>
-          <button id="btn-fan-low" class="btn-secondary" style="width:100%;">Fan: LOW</button>
-          <button id="btn-fan-high" class="btn-secondary" style="width:100%;">Fan: HIGH</button>
-        </div>
-        <p class="hint">Direct control uses the live ThinQ agent. Commands are rate-limited (6/min).</p>
-      </section>
-    </div>
-  </main>
+async function api(path, opts){
+  const r = await fetch(path, opts||{});
+  if(!r.ok) throw new Error(r.status);
+  return r.json();
+}
 
-  <script>
-    Chart.defaults.color = "#94a3b8";
-    Chart.defaults.font.family = '"Inter", sans-serif';
-    Chart.defaults.font.size = 12;
+async function refreshStatus(){
+  try{
+    const s = await api('/api/status');
+    const t = s?.temperature?.currentTemperature;
+    const tgt = s?.temperature?.targetTemperature;
+    $('tempVal').textContent = t!=null ? t.toFixed(1) : '--';
+    $('tempCaption').textContent = 'Live · ' + new Date().toLocaleTimeString();
+    $('targetVal').textContent = fmt(tgt);
+    $('modeVal').textContent = s?.airConJobMode?.currentJobMode || s?.operation?.airConOperationMode || '--';
+    $('fanVal').textContent = s?.airFlow?.windStrength || '--';
+    $('stPower').textContent = s?.operation?.airConOperationMode || '--';
+    $('stJob').textContent = s?.airConJobMode?.currentJobMode || '--';
+    $('stFan').textContent = s?.airFlow?.windStrength || '--';
+    $('stTarget').textContent = fmt(tgt);
+    $('dot').className = 'dot';
+    $('statusText').textContent = 'live';
+  }catch(e){
+    $('dot').className = 'dot off';
+    $('statusText').textContent = 'offline';
+  }
+}
 
-    let chart = null;
-    let currentTimeline = "24h";
-
-    const $ = (id) => document.getElementById(id);
-
-    async function fetchJson(path, opts) {
-      const res = await fetch(path, opts || {});
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    }
-
-    function fmtTemp(v) { return v == null ? "--" : v.toFixed(1); }
-    function fmtTime(iso) {
-      if (!iso) return "--";
-      return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    }
-
-    async function refreshStatus() {
-      try {
-        const status = await fetchJson("/api/status");
-        const temp = status && status.temperature && status.temperature.currentTemperature;
-        const target = status && status.temperature && status.temperature.targetTemperature;
-        if (temp != null) {
-          $("current-temp").textContent = temp.toFixed(1);
-          $("temp-caption").textContent = `Room temperature · ${fmtTime(status && status.ts)}`;
+async function refreshTemps(){
+  try{
+    const d = await api(`/api/temps?timeline=${timeline}`);
+    $('sMin').textContent = fmt(d.min_temp_c);
+    $('sMax').textContent = fmt(d.max_temp_c);
+    $('sCnt').textContent = d.count ?? 0;
+    const data = d.readings.map(r=>({x:new Date(r.ts), y: r.temp_c}));
+    if(chart){
+      chart.data.datasets[0].data = data;
+      chart.update();
+    }else{
+      const ctx = $('chart').getContext('2d');
+      chart = new Chart(ctx,{
+        type:'line',
+        data:{datasets:[{label:'Room °C', data, borderColor:'#22d3ee', backgroundColor:'rgba(34,211,238,.12)', fill:true, tension:.35, pointRadius:0, borderWidth:2}]},
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{
+            x:{type:'time', time:{unit: timeline==='30d'?'day':timeline==='7d'?'hour':'hour'}, grid:{color:'rgba(255,255,255,.06)'}},
+            y:{min:10,max:32,grid:{color:'rgba(255,255,255,.06)'}}
+          }
         }
-        $("target-temp").textContent = fmtTemp(target);
-        $("device-state").textContent =
-          (status && status.operation && status.operation.airConOperationMode) ||
-          (status && status.airConJobMode && status.airConJobMode.currentJobMode) ||
-          "--";
-        $("st-power").textContent = (status && status.operation && status.operation.airConOperationMode) || "--";
-        $("st-jobmode").textContent = (status && status.airConJobMode && status.airConJobMode.currentJobMode) || "--";
-        $("st-fan").textContent = (status && status.airFlow && status.airFlow.windStrength) || "--";
-        $("st-target").textContent = fmtTemp(target);
-        $("conn-pill").className = "pill live";
-        $("conn-text").textContent = "live";
-      } catch (err) {
-        $("conn-pill").className = "pill offline";
-        $("conn-text").textContent = "offline";
-      }
-    }
-
-    async function refreshTemps() {
-      try {
-        const data = await fetchJson(`/api/temps?timeline=${encodeURIComponent(currentTimeline)}`);
-        const readings = data.readings;
-        const temps = readings.map((r) => ({ x: new Date(r.ts).getTime(), y: r.temp_c }));
-        $("stat-min").textContent = fmtTemp(data.min_temp_c);
-        $("stat-max").textContent = fmtTemp(data.max_temp_c);
-        $("stat-count").textContent = data.count;
-
-        if (chart) {
-          chart.data.datasets[0].data = temps;
-          chart.options.scales.x.time.unit = currentTimeline === "30d" ? "day" : "hour";
-          chart.update();
-        } else {
-          const ctx = document.getElementById("temp-chart").getContext("2d");
-          chart = new Chart(ctx, {
-            type: "line",
-            data: {
-              datasets: [{
-                label: "Room temperature (°C)",
-                data: temps,
-                borderColor: "#22d3ee",
-                backgroundColor: "rgba(34, 211, 238, 0.10)",
-                fill: true,
-                tension: 0.3,
-                pointRadius: 0,
-                pointHitRadius: 6,
-                borderWidth: 2,
-              }],
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              interaction: { mode: "nearest", intersect: false },
-              plugins: {
-                legend: { display: false },
-                tooltip: {
-                  mode: "nearest",
-                  intersect: false,
-                  background: "rgba(15, 20, 25, 0.9)",
-                  titleColor: "#fff",
-                  bodyColor: "#cbd5e1",
-                  borderColor: "rgba(255,255,255,0.1)",
-                  borderWidth: 1,
-                  padding: 10,
-                  cornerRadius: 8,
-                  callbacks: {
-                    label: (ctx) => `${ctx.parsed.y.toFixed(1)} °C`,
-                  },
-                },
-              },
-              scales: {
-                x: { type: "time", time: { unit: currentTimeline === "30d" ? "day" : "hour" } },
-                y: { min: 10, max: 32, grid: { color: "rgba(255,255,255,0.04)" } },
-              },
-            },
-          });
-        }
-      } catch (err) {
-        document.getElementById("chart-error").textContent = String(err);
-      }
-    }
-
-    async function refreshNightWatch() {
-      try {
-        const cfg = await fetchJson("/api/nightwatch/config", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        });
-        $("nw-enabled").checked = cfg.enabled;
-        $("nw-badge").textContent = cfg.enabled ? "on" : "off";
-        $("nw-label").className = cfg.enabled ? "nw-label enabled" : "nw-label disabled";
-        $("low-threshold").value = cfg.low_threshold_c;
-        $("high-target").value = cfg.high_target_c;
-        $("night-start").value = cfg.night_start_hour;
-        $("night-end").value = cfg.night_end_hour;
-      } catch (err) {
-        // best effort
-      }
-    }
-
-    document.querySelectorAll(".chip").forEach((chip) => {
-      chip.addEventListener("click", () => {
-        document.querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
-        chip.classList.add("active");
-        currentTimeline = chip.dataset.timeline;
-        refreshTemps();
       });
-    });
-
-    $("nw-enabled").addEventListener("change", async () => {
-      const enabled = $("nw-enabled").checked;
-      const payload = {
-        low_threshold_c: parseFloat($("low-threshold").value) || 18,
-        high_target_c: parseFloat($("high-target").value) || 22,
-        fan_low: true,
-        night_start_hour: parseInt($("night-start").value) || 0,
-        night_end_hour: parseInt($("night-end").value) || 7,
-        enabled,
-      };
-      await fetchJson("/api/nightwatch/config", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
-      });
-      $("nw-badge").textContent = enabled ? "on" : "off";
-      $("nw-label").className = enabled ? "nw-label enabled" : "nw-label disabled";
-    });
-
-    $("nw-save").addEventListener("click", async () => {
-      const payload = {
-        low_threshold_c: parseFloat($("low-threshold").value) || 18,
-        high_target_c: parseFloat($("high-target").value) || 22,
-        fan_low: true,
-        night_start_hour: parseInt($("night-start").value) || 0,
-        night_end_hour: parseInt($("night-end").value) || 7,
-        enabled: $("nw-enabled").checked,
-      };
-      await fetchJson("/api/nightwatch/config", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
-      });
-      refreshStatus();
-    });
-
-    $("nw-start").addEventListener("click", async () => {
-      await fetch("/api/nightwatch/start", { method: "POST" });
-      await refreshNightWatch();
-    });
-
-    $("nw-stop").addEventListener("click", async () => {
-      await fetch("/api/nightwatch/stop", { method: "POST" });
-      await refreshNightWatch();
-    });
-
-    async function postControl(path) {
-      try {
-        await fetch(path, { method: "POST" });
-        setTimeout(refreshStatus, 800);
-      } catch (err) {
-        document.getElementById("chart-error").textContent = String(err);
-      }
     }
-    $("btn-turn-on").addEventListener("click", () => postControl("/api/nightwatch/start"));
-    $("btn-turn-off").addEventListener("click", () => postControl("/api/nightwatch/stop"));
-    $("btn-fan-low").addEventListener("click", () => { /* fan set via night watch config */ });
-    $("btn-fan-high").addEventListener("click", () => { /* fan set via night watch config */ });
+  }catch(e){ console.warn(e) }
+}
 
-    refreshStatus();
-    refreshTemps();
-    refreshNightWatch();
-    setInterval(() => { refreshStatus(); refreshTemps(); refreshNightWatch(); }, 30000);
-  </script>
+async function loadConfig(){
+  try{
+    const c = await api('/api/nightwatch/config');
+    $('nwSwitch').classList.toggle('on', !!c.enabled);
+    $('nwBadge').textContent = c.enabled?'on':'off';
+    $('nwBadge').style.color = c.enabled?'var(--ok)':'var(--muted)';
+    $('lowIn').value = c.low_threshold_c;
+    $('highIn').value = c.high_target_c;
+    const pad = h => String(h).padStart(2,'0')+':00';
+    $('startIn').value = pad(c.night_start_hour);
+    $('endIn').value = pad(c.night_end_hour);
+  }catch(e){}
+}
+
+async function saveConfig(){
+  const payload = {
+    enabled: $('nwSwitch').classList.contains('on'),
+    low_threshold_c: parseFloat($('lowIn').value),
+    high_target_c: parseFloat($('highIn').value),
+    fan_low:true,
+    night_start_hour: parseInt($('startIn').value.slice(0,2)),
+    night_end_hour: parseInt($('endIn').value.slice(0,2))
+  };
+  await api('/api/nightwatch/config',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+  await loadConfig();
+}
+
+$('nwSwitch').onclick = async ()=>{
+  $('nwSwitch').classList.toggle('on');
+  await saveConfig();
+};
+
+$('saveBtn').onclick = saveConfig;
+$('startBtn').onclick = async ()=>{ await api('/api/nightwatch/start',{method:'POST'}); await loadConfig(); };
+$('stopBtn').onclick = async ()=>{ await api('/api/nightwatch/stop',{method:'POST'}); await loadConfig(); };
+
+document.querySelectorAll('.chip').forEach(b=>{
+  b.onclick = ()=>{ document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active')); b.classList.add('active'); timeline=b.dataset.t; refreshTemps(); };
+});
+
+$('qaOn').onclick = async ()=>{ await api('/api/nightwatch/start',{method:'POST'}); refreshStatus(); };
+$('qaOff').onclick = async ()=>{ await api('/api/nightwatch/stop',{method:'POST'}); refreshStatus(); };
+
+refreshStatus(); refreshTemps(); loadConfig();
+setInterval(()=>{ refreshStatus(); refreshTemps(); }, 30000);
+</script>
 </body>
 </html>
