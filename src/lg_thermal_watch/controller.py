@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 from aiohttp import ClientSession
-
-from thinqconnect import ThinQApi, ThinQAPIException
+from thinqconnect import ThinQApi
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ class ThinQAgentController:
 
     async def get_device_status(self) -> dict[str, Any] | None:
         """Read full device status."""
-        return await self.api.async_get_device_status(self.device_id)
+        return cast("dict[str, Any] | None", await self.api.async_get_device_status(self.device_id))
 
     @staticmethod
     def _extract_temperature(status: dict[str, Any] | None, key: str) -> float | None:
@@ -74,7 +73,7 @@ class ThinQAgentController:
             return None
 
     async def get_room_temperature(self) -> float | None:
-        """Read measured room temperature (Celsius)."""
+        """Read room temperature (Celsius)."""
         status = await self.get_device_status() or {}
         return self._extract_temperature(status, "currentTemperature")
 
@@ -84,12 +83,12 @@ class ThinQAgentController:
         return self._extract_temperature(status, "targetTemperature")
 
     async def get_energy_consumption(self) -> dict[str, Any] | None:
-        """Optional energy profile/usage via ThinQ API."""
-        return await self.api.async_get_device_energy_profile(self.device_id)
+        """Return the optional energy profile/usage via the ThinQ API."""
+        return cast("dict[str, Any] | None", await self.api.async_get_device_energy_profile(self.device_id))
 
     async def _post_control(self, payload: dict[str, Any]) -> dict[str, Any] | None:
         """Post a control command (accepted by LG cloud)."""
-        return await self.api.async_post_device_control(self.device_id, payload)
+        return cast("dict[str, Any] | None", await self.api.async_post_device_control(self.device_id, payload))
 
     async def set_target_temperature(self, value_c: float) -> dict[str, Any] | None:
         """Set target temperature (Celsius); LG requires mode context in the payload."""
@@ -120,7 +119,7 @@ class ThinQAgentController:
         return await self._post_control(payload)
 
     async def set_swing_mode(self, mode: str) -> dict[str, Any] | None:
-        """Optional: set swing mode."""
+        """Set the optional swing mode."""
         payload = {"windDirection": {"airGuideWind": str(mode).lower()}}
         return await self._post_control(payload)
 

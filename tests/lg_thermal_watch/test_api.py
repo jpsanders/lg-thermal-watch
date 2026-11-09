@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Generator
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -32,11 +34,15 @@ class MockAgent:
 
 
 @pytest.fixture
-def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]:
     """Build a test client with a mocked agent and temp logger."""
     mock_agent = MockAgent()
     monkeypatch.setattr(api, "_agent", LGPC18SKAgent(mock_agent))  # type: ignore[arg-type]
-    monkeypatch.setattr(api, "_temp_logger", RoomTempLogger(mock_agent, db_path="/tmp/opencode/lg_thinq_room_temps_test.db"))
+    monkeypatch.setattr(
+        api,
+        "_temp_logger",
+        RoomTempLogger(mock_agent, db_path="/tmp/opencode/lg_thinq_room_temps_test.db"),  # type: ignore[arg-type]
+    )
     monkeypatch.setattr(api, "_night_watch", LGPC18SKNightWatch(mock_agent))  # type: ignore[arg-type]
     app = api.create_app()
     with TestClient(app) as test_client:

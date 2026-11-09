@@ -6,20 +6,22 @@ import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
+from aiohttp import ClientSession
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+
 from lg_thermal_watch.agent import LGPC18SKAgent
 from lg_thermal_watch.controller import create_thinq_agent_controller
 from lg_thermal_watch.nightwatch import LGPC18SKNightWatch
 from lg_thermal_watch.tempdb import RoomTempLogger
-from pydantic import BaseModel, Field
 
-DB_PATH = os.environ.get("LG_THERMAL_WATCH_DB", "/tmp/opencode/lg_thinq_room_temps.db")
+DB_PATH = os.environ.get("LG_THERMAL_WATCH_DB", "/tmp/opencode/lg_thinq_room_temps.db")  # nosec B108
 NIGHTWATCH_CONFIG_PATH = os.environ.get(
-    "LG_THERMAL_WATCH_NIGHTWATCH_CONFIG", "/tmp/opencode/lg_thermal_watch_nightwatch.json"
+    "LG_THERMAL_WATCH_NIGHTWATCH_CONFIG", "/tmp/opencode/lg_thermal_watch_nightwatch.json"  # nosec B108
 )
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -45,7 +47,7 @@ def get_agent() -> LGPC18SKAgent:
     """Return the shared live agent, creating it lazily on first use."""
     global _agent
     if _agent is None:
-        controller = create_thinq_agent_controller(_session)
+        controller = create_thinq_agent_controller(cast(ClientSession, _session))
         _agent = LGPC18SKAgent(controller)
     return _agent
 

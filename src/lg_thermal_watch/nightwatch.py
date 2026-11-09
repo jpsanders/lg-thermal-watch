@@ -44,7 +44,7 @@ class LGPC18SKNightWatch:
         self.night_end_hour = night_end_hour
         self.now_fn = now_fn or (lambda: datetime.now())
         self._running = False
-        self._task: asyncio.Task | None = None
+        self._task: asyncio.Task[Any] | None = None
         self._heating = False
 
     async def start(self) -> None:
@@ -119,5 +119,5 @@ class LGPC18SKNightWatch:
 
 
 def create_night_watch(agent: LGPC18SKAgent, **kwargs: Any) -> LGPC18SKNightWatch:
-    """Factory for the night watch."""
+    """Create the night watch."""
     return LGPC18SKNightWatch(agent, **kwargs)

@@ -29,7 +29,7 @@ class TestRoomTempLogger:
         if os.path.exists(db_path):
             os.remove(db_path)
         agent = MockAgent([21.5, 22.0, 20.5, 23.0])
-        logger = RoomTempLogger(agent, db_path=db_path, interval_s=0.05)
+        logger = RoomTempLogger(agent, db_path=db_path, interval_s=0.05)  # type: ignore[arg-type]
         asyncio.run(self._run(logger))
         assert logger.get_readings_count() >= 1
         minimum = logger.get_min_temp()
@@ -50,7 +50,7 @@ class TestRoomTempLogger:
         if os.path.exists(db_path):
             os.remove(db_path)
         agent = MockAgent([21.5, 22.0, 20.5, 23.0])
-        logger = RoomTempLogger(agent, db_path=db_path, interval_s=0.05)
+        logger = RoomTempLogger(agent, db_path=db_path, interval_s=0.05)  # type: ignore[arg-type]
         asyncio.run(self._run(logger))
         minimum = logger.get_min_temp(start=None, end=None)
         assert minimum is not None

@@ -5,16 +5,14 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, cast
 
 from lg_thermal_watch.controller import (
+    DEFAULT_TARGET_TEMP_C,
     DEFAULT_TEMP_MAX_C,
     DEFAULT_TEMP_MIN_C,
-    DEFAULT_TARGET_TEMP_C,
     ThinQAgentController,
 )
-
-from thinqconnect import ThinQAPIException
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,7 +83,7 @@ class LGPC18SKAgent:
         if not (self.temp_min_c <= value_c <= self.temp_max_c):
             raise ValueError(f"target temperature {value_c}C outside allowed [{self.temp_min_c}, {self.temp_max_c}]C")
         response = await self._issue(lambda: self.controller.set_target_temperature(value_c))
-        return response
+        return cast("dict[str, Any] | None", response)
 
     async def set_hvac_mode(self, mode: str) -> dict[str, Any] | None:
         """Set HVAC mode (off/cool/heat/fan/dry/auto) with validation."""
@@ -93,24 +91,24 @@ class LGPC18SKAgent:
         if mode_norm not in ("off", "cool", "heat", "fan", "dry", "auto"):
             raise ValueError(f"unsupported hvac mode: {mode}")
         response = await self._issue(lambda: self.controller.set_hvac_mode(mode_norm))
-        return response
+        return cast("dict[str, Any] | None", response)
 
     async def set_fan_speed(self, speed: str) -> dict[str, Any] | None:
         """Set fan speed through the throttled issue path."""
         response = await self._issue(lambda: self.controller.set_fan_speed(speed))
-        return response
+        return cast("dict[str, Any] | None", response)
 
     async def set_swing_mode(self, mode: str) -> dict[str, Any] | None:
         """Set swing mode through the throttled issue path."""
         response = await self._issue(lambda: self.controller.set_swing_mode(mode))
-        return response
+        return cast("dict[str, Any] | None", response)
 
     async def turn_on(self) -> dict[str, Any] | None:
         """Turn on through the throttled issue path."""
         response = await self._issue(lambda: self.controller.turn_on())
-        return response
+        return cast("dict[str, Any] | None", response)
 
     async def turn_off(self) -> dict[str, Any] | None:
         """Turn off through the throttled issue path."""
         response = await self._issue(lambda: self.controller.turn_off())
-        return response
+        return cast("dict[str, Any] | None", response)

@@ -12,7 +12,7 @@ from lg_thermal_watch.agent import LGPC18SKAgent
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_DB_PATH = "/tmp/opencode/lg_thinq_room_temps.db"
+DEFAULT_DB_PATH = "/tmp/opencode/lg_thinq_room_temps.db"  # nosec B108
 DEFAULT_INTERVAL_S = 60.0
 
 
@@ -30,7 +30,7 @@ class RoomTempLogger:
         self.db_path = db_path
         self.interval_s = interval_s
         self._running = False
-        self._task: asyncio.Task | None = None
+        self._task: asyncio.Task[Any] | None = None
         self._init_db()
 
     def _init_db(self) -> None:

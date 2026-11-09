@@ -79,8 +79,8 @@ class StubApi:
 def make_agent(**kwargs: Any) -> tuple[LGPC18SKAgent, MockController]:
     """Build an agent over a fresh mock controller."""
     mock = MockController()
-    controller = ThinQAgentController(StubApi(), device_id="dev")  # type: ignore[arg-type]
-    agent = LGPC18SKAgent(controller, **kwargs)  # type: ignore[arg-type]
+    controller = ThinQAgentController(StubApi(), device_id="dev")
+    agent = LGPC18SKAgent(controller, **kwargs)
     return agent, mock
 
 
@@ -95,8 +95,8 @@ class TestLGPC18SKAgentThrottle:
             return [on, off]
 
         responses = asyncio.run(run())
-        assert responses[0] is not None and responses[0]["ok"] is True  # type: ignore[index]
-        assert responses[1] is not None and responses[1]["ok"] is True  # type: ignore[index]
+        assert responses[0] is not None and responses[0]["ok"] is True
+        assert responses[1] is not None and responses[1]["ok"] is True
 
     def test_command_rate_limit(self) -> None:
         """More than the per-window allowance must raise."""
