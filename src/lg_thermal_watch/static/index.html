@@ -1,269 +1,1407 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>LG Thermal Watch — PC18SK</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Thermal Watch</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8z' fill='%232a78d6'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
 <style>
-:root{
-  --bg:#07090f; --panel:#0f141e; --panel-2:#141b27; --line:#1e2837;
-  --text:#e6eaf2; --muted:#8a95a6; --accent:#22d3ee; --accent-2:#7c3aed;
-  --ok:#34d399; --warn:#f59e0b; --bad:#f87171; --heat:#f43f5e;
-  --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.4);
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --surface-2: #f1f0ec;
+  --text-1: #0b0b0b;
+  --text-2: #52514e;
+  --muted: #74726c;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --series: #2a78d6;
+  --series-wash: rgba(42, 120, 214, 0.16);
+  --heat: #eb6834;
+  --heat-wash: rgba(235, 104, 52, 0.14);
+  --night-wash: rgba(11, 11, 11, 0.05);
+  --accent: #256abf;
+  --on-accent: #ffffff;
+  --good: #0ca30c;
+  --critical: #d03b3b;
+  --shadow: 0 1px 2px rgba(11, 11, 11, 0.04), 0 6px 24px rgba(11, 11, 11, 0.05);
+  --tooltip: #ffffff;
+  --radius: 16px;
+  --font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
-*{box-sizing:border-box}
-html,body{height:100%}
-body{margin:0;background:radial-gradient(1200px 600px at 80% -10%, rgba(124,58,237,.15), transparent), var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-a{color:var(--accent)}
-header{position:sticky;top:0;z-index:10;background:rgba(7,9,15,.8);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.hwrap{max-width:1200px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-.brand{display:flex;align-items:center;gap:12px}
-.logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;font-weight:700;color:#001018}
-.brand h1{margin:0;font-size:18px;letter-spacing:-.3px}
-.brand sub{display:block;font-size:11px;color:var(--muted);font-weight:500}
-.status{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok)}
-.dot.off{background:var(--bad);box-shadow:0 0 12px var(--bad)}
-main{max-width:1200px;margin:28px auto;padding:0 20px}
-.grid{display:grid;grid-template-columns: repeat(12,1fr);gap:20px}
-.card{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
-.card h2{margin:0 0 14px;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:600}
-.span-12{grid-column:span 12}
-.span-8{grid-column:span 8}
-.span-4{grid-column:span 4}
-.bigtemp{display:flex;align-items:flex-end;gap:12px}
-.bigtemp .val{font-size:72px;line-height:1;font-weight:700;letter-spacing:-2px;font-family:"JetBrains Mono",monospace}
-.bigtemp .unit{font-size:28px;color:var(--muted);margin-bottom:8px}
-.meta{display:flex;gap:14px;margin-top:16px;flex-wrap:wrap}
-.pill{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:110px}
-.pill kbd{display:block;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
-.pill v{font-size:18px;font-weight:600;font-family:"JetBrains Mono",monospace}
-.controls{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:12px}
-.field{display:flex;flex-direction:column;gap:6px}
-.field label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
-.field input, .field select{background:#0a0f18;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;font-size:14px}
-.field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(34,211,238,.15)}
-.toggle{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.switch{position:relative;width:52px;height:30px;background:#0a0f18;border:1px solid var(--line);border-radius:16px;cursor:pointer}
-.switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform .2s}
-.switch.on{background:var(--accent);border-color:var(--accent)}
-.switch.on::after{transform:translateX(22px)}
-.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-button{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 14px;font-weight:600;font-size:14px;cursor:pointer;transition:.15s}
-button:hover{transform:translateY(-1px);border-color:#2a3748}
-button.primary{background:linear-gradient(135deg,var(--accent),#7dd3fc);color:#001018;border:none}
-button.danger{border-color:rgba(248,113,113,.4);color:var(--bad)}
-.chips{display:flex;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:6px}
-.chip{background:transparent;border:none;color:var(--muted);padding:6px 12px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer}
-.chip.active{background:var(--accent);color:#001018}
-.stats{display:flex;gap:18px;color:var(--muted);font-size:13px;margin-left:auto}
-.chartwrap{height:360px;position:relative}
-.statusgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.stat{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:14px}
-.stat kbd{display:block;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
-.stat v{font-size:16px;font-weight:600;font-family:"JetBrains Mono",monospace}
-.hint{color:var(--muted);font-size:12.5px;margin-top:8px}
-@media (max-width:980px){.span-8,.span-4{grid-column:span 12}.controls{grid-template-columns:1fr}}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #242422;
+    --text-1: #f0efec;
+    --text-2: #c3c2b7;
+    --muted: #918f88;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --series: #3987e5;
+    --series-wash: rgba(57, 135, 229, 0.24);
+    --heat: #d95926;
+    --heat-wash: rgba(217, 89, 38, 0.22);
+    --night-wash: rgba(255, 255, 255, 0.05);
+    --shadow: none;
+    --tooltip: #242422;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #242422;
+  --text-1: #f0efec;
+  --text-2: #c3c2b7;
+  --muted: #918f88;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --series: #3987e5;
+  --series-wash: rgba(57, 135, 229, 0.24);
+  --heat: #d95926;
+  --heat-wash: rgba(217, 89, 38, 0.22);
+  --night-wash: rgba(255, 255, 255, 0.05);
+  --shadow: none;
+  --tooltip: #242422;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-1);
+  font: 15px/1.5 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--series); outline-offset: 2px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+svg.icon { width: 16px; height: 16px; flex: none; }
+
+/* Header */
+.top { border-bottom: 1px solid var(--border); background: var(--surface); }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 60px; }
+.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.brand h1 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.brand span { color: var(--text-2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-right { display: flex; align-items: center; gap: 12px; }
+.conn { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 13px; white-space: nowrap; }
+.conn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.conn[data-state="ok"] .dot { background: var(--good); }
+.conn[data-state="bad"] .dot { background: var(--critical); }
+.icon-btn {
+  display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px;
+  border: 1px solid var(--border); background: transparent; cursor: pointer; color: var(--text-2);
+}
+.icon-btn:hover { background: var(--surface-2); color: var(--text-1); }
+
+main { padding: 24px 0 64px; }
+.stack > * + * { margin-top: 20px; }
+
+/* Banner */
+.banner {
+  display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--critical);
+}
+.banner .icon { color: var(--critical); margin-top: 3px; }
+.banner ul { margin: 0; padding: 0; list-style: none; }
+.banner li + li { margin-top: 4px; }
+.banner code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+
+/* Cards */
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 24px;
+}
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.card h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
+.eyebrow { margin: 0 0 6px; color: var(--text-2); font-size: 13px; font-weight: 500; }
+.sub { color: var(--text-2); font-size: 13px; }
+
+/* Hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 36px; align-items: start; }
+.hero-figure { display: flex; align-items: flex-start; gap: 6px; line-height: 1; }
+.hero-figure .value { font-size: clamp(64px, 11vw, 104px); font-weight: 600; letter-spacing: -0.035em; }
+.hero-figure .unit { font-size: 28px; font-weight: 500; color: var(--text-2); margin-top: 10px; }
+.hero-caption { margin: 10px 0 0; color: var(--text-2); }
+
+.scale { margin-top: 26px; }
+.scale-track { position: relative; height: 10px; border-radius: 5px; background: var(--surface-2); }
+.scale-heatzone { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 5px 0 0 5px; background: var(--heat-wash); }
+.scale-band { position: absolute; top: 0; bottom: 0; background: var(--series-wash); border-left: 2px solid var(--series); border-right: 2px solid var(--series); }
+.scale-marker {
+  position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
+  background: var(--text-1); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--border);
+}
+.scale-ticks { position: relative; height: 18px; margin-top: 6px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.scale-ticks span { position: absolute; transform: translateX(-50%); }
+.scale-ticks span:first-child { transform: none; }
+.scale-ticks span:last-child { transform: translateX(-100%); }
+.scale-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; font-size: 12px; color: var(--text-2); }
+.swatch { display: inline-block; width: 12px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.swatch.heatzone { background: var(--heat-wash); box-shadow: inset 0 0 0 1px var(--border); }
+.swatch.band { background: var(--series-wash); box-shadow: inset 0 0 0 1px var(--series); }
+
+.watch-panel { border-left: 1px solid var(--border); padding-left: 32px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 10px; border-radius: 999px;
+  background: var(--surface-2); font-weight: 600; font-size: 14px;
+}
+.pill .icon { color: var(--text-2); }
+.pill[data-state="good"] .icon { color: var(--good); }
+.pill[data-state="heat"] .icon { color: var(--heat); }
+.pill[data-state="bad"] .icon { color: var(--critical); }
+.pill[data-state="armed"] .icon { color: var(--series); }
+.watch-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.watch-title strong { font-size: 15px; }
+.watch-sentence { margin: 14px 0 0; font-size: 16px; line-height: 1.55; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 16px 0 0; font-size: 14px; }
+.facts dt { color: var(--text-2); }
+.facts dd { margin: 0; }
+.night-summary { margin: 16px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); font-size: 14px; }
+.night-summary b { font-weight: 600; }
+
+/* History */
+.chips { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--surface-2); }
+.chip {
+  border: 0; background: transparent; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--text-2);
+}
+.chip:hover { color: var(--text-1); }
+.chip[aria-pressed="true"] { background: var(--surface); color: var(--text-1); box-shadow: 0 0 0 1px var(--border); }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.stat { padding: 12px 14px; border-radius: 12px; background: var(--surface-2); min-width: 0; }
+.stat .label { font-size: 12px; color: var(--text-2); }
+.stat .value { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin-top: 2px; }
+.stat .value small { font-size: 13px; font-weight: 500; color: var(--text-2); margin-left: 2px; }
+.stat .note { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.key { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 10px; padding: 0; list-style: none; font-size: 12px; color: var(--text-2); }
+.key li { display: inline-flex; align-items: center; gap: 6px; }
+.key .k-line { width: 16px; height: 2px; border-radius: 1px; background: var(--series); }
+.key .k-night { width: 12px; height: 10px; border-radius: 3px; background: var(--night-wash); box-shadow: inset 0 0 0 1px var(--border); }
+.key .k-heat { width: 12px; height: 10px; border-radius: 3px; background: var(--heat-wash); box-shadow: inset 0 -3px 0 var(--heat); }
+.key .k-thresh { width: 16px; height: 0; border-top: 1px dashed var(--text-2); }
+.chart-wrap { position: relative; height: 330px; transition: opacity .2s; }
+.chart-wrap.loading { opacity: .5; }
+.chart-empty {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px;
+  color: var(--text-2); font-size: 14px;
+}
+.chart-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.link-btn {
+  border: 0; background: none; padding: 4px 0; cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600;
+}
+:root[data-theme="dark"] .link-btn { color: var(--series); }
+@media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .link-btn { color: var(--series); } }
+.table-wrap { margin-top: 12px; max-height: 360px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+caption { text-align: left; padding: 10px 12px; color: var(--text-2); }
+th, td { padding: 8px 12px; text-align: right; border-top: 1px solid var(--border); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { position: sticky; top: 0; background: var(--surface); color: var(--text-2); font-weight: 600; border-top: 0; }
+td { font-variant-numeric: tabular-nums; }
+
+.activity { margin-top: 22px; }
+.activity h3 { margin: 0 0 8px; font-size: 14px; font-weight: 650; }
+.events { margin: 0; padding: 0; list-style: none; }
+.events li { display: grid; grid-template-columns: 112px 18px 1fr; gap: 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--border); font-size: 14px; }
+.events time { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.events .icon { margin-top: 3px; color: var(--text-2); }
+.events li[data-kind="heat_start"] .icon { color: var(--heat); }
+.events li[data-kind="error"] .icon { color: var(--critical); }
+.events .empty { display: block; color: var(--text-2); }
+
+/* Settings + device */
+.cols { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-radius: 12px; background: var(--surface-2); margin-bottom: 18px; }
+.switch-row .what { font-weight: 600; }
+.switch-row .sub { margin-top: 2px; }
+.switch {
+  position: relative; flex: none; width: 50px; height: 30px; border-radius: 15px; border: 0; padding: 0; cursor: pointer;
+  background: var(--axis); transition: background .15s;
+}
+.switch::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .15s;
+}
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { transform: translateX(20px); }
+.switch:disabled { opacity: .5; cursor: progress; }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+.field label, .field .label { font-size: 13px; font-weight: 600; }
+.field .hint { font-size: 12px; color: var(--text-2); }
+.control {
+  display: flex; align-items: center; border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+  min-height: 42px; padding: 0 12px;
+}
+.control:focus-within { border-color: var(--series); box-shadow: 0 0 0 3px var(--series-wash); }
+.control input, .control select { flex: 1; min-width: 0; border: 0; background: transparent; padding: 9px 0; outline: none; }
+.control select { cursor: pointer; }
+.control .suffix { color: var(--text-2); font-size: 14px; padding-left: 6px; }
+.check { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.form-summary { margin: 16px 0 0; padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--border); font-size: 14px; color: var(--text-2); }
+.form-error { margin: 12px 0 0; color: var(--critical); font-size: 14px; font-weight: 500; }
+.form-error:empty { display: none; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px;
+  border-radius: 10px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-size: 14px; font-weight: 600;
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.btn .icon { width: 16px; height: 16px; }
+.btn.heat .icon { color: var(--heat); }
+.kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.kv div { padding: 12px 14px; border-radius: 12px; background: var(--surface-2); min-width: 0; }
+.kv dt { font-size: 12px; color: var(--text-2); }
+.kv dd { margin: 2px 0 0; font-size: 16px; font-weight: 600; }
+.device-note { margin: 14px 0 0; font-size: 13px; color: var(--text-2); }
+
+/* Toast */
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  max-width: min(560px, calc(100vw - 32px)); padding: 12px 16px; border-radius: 12px;
+  background: var(--text-1); color: var(--page); font-size: 14px; font-weight: 500; box-shadow: 0 8px 30px rgba(0, 0, 0, .25);
+  transition: opacity .2s, transform .2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.error { background: var(--critical); color: #fff; }
+
+@media (max-width: 880px) {
+  .hero, .cols { grid-template-columns: minmax(0, 1fr); }
+  .watch-panel { border-left: 0; padding-left: 0; border-top: 1px solid var(--border); padding-top: 24px; }
+}
+@media (max-width: 600px) {
+  .card { padding: 18px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chart-wrap { height: 270px; }
+  .fields { grid-template-columns: minmax(0, 1fr); }
+  .kv { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .events li { grid-template-columns: 1fr; gap: 2px; }
+  .events li .icon { display: none; }
+  .brand span { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
 </style>
 </head>
 <body>
-<header>
-  <div class="hwrap">
-    <div class="brand">
-      <div class="logo">LG</div>
-      <div><h1>Thermal Watch</h1><sub>PC18SK · ThinQ Connect · local</sub></div>
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><h1>Thermal Watch</h1><span>LG PC18SK heat pump</span></div>
+    <div class="top-right">
+      <span class="conn" id="conn" data-state="pending" role="status"><span class="dot" aria-hidden="true"></span><span id="connText">Connecting…</span></span>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark theme"></button>
     </div>
-    <div class="status"><span class="dot" id="dot"></span><span id="statusText">connecting…</span></div>
   </div>
 </header>
 
 <main>
-<div class="grid">
-  <section class="card span-8">
-    <h2>Room</h2>
-    <div class="bigtemp">
-      <div class="val" id="tempVal">--</div>
-      <div class="unit">°C</div>
-    </div>
-    <div id="tempCaption" style="color:var(--muted);font-size:13px;margin-top:4px">—</div>
-    <div class="meta">
-      <div class="pill"><kbd>Target</kbd><v id="targetVal">--</v></div>
-      <div class="pill"><kbd>Mode</kbd><v id="modeVal">--</v></div>
-      <div class="pill"><kbd>Fan</kbd><v id="fanVal">--</v></div>
-      <div class="pill"><kbd>Night watch</kbd><v id="nwBadge">off</v></div>
-    </div>
-  </section>
+  <div class="wrap stack">
+    <noscript><div class="banner">This dashboard needs JavaScript.</div></noscript>
+    <div class="banner" id="banner" role="alert" hidden><span id="bannerIcon"></span><ul id="bannerList"></ul></div>
 
-  <section class="card span-4">
-    <h2>Night Watch</h2>
-    <div class="toggle">
-      <div class="switch" id="nwSwitch"></div>
-      <div style="font-weight:600">Auto-heat 00:00–07:00</div>
-    </div>
-    <div class="controls">
-      <div class="field"><label>Low threshold</label><input id="lowIn" type="number" step="0.5" min="10" max="25"></div>
-      <div class="field"><label>High target</label><input id="highIn" type="number" step="0.5" min="16" max="28"></div>
-      <div class="field"><label>Window start</label><input id="startIn" type="time" step="3600"></div>
-      <div class="field"><label>Window end</label><input id="endIn" type="time" step="3600"></div>
-    </div>
-    <div class="btns">
-      <button class="primary" id="saveBtn">Save settings</button>
-      <button id="startBtn">Start now</button>
-      <button class="danger" id="stopBtn">Stop</button>
-    </div>
-    <div class="hint">When room ≤ low threshold during window, heat gently to high target with fan LOW.</div>
-  </section>
+    <section class="card hero" aria-labelledby="roomLabel">
+      <div>
+        <p class="eyebrow" id="roomLabel">Room temperature</p>
+        <div class="hero-figure"><span class="value" id="roomTemp">--</span><span class="unit">°C</span></div>
+        <p class="hero-caption" id="roomCaption">Reading the heat pump…</p>
+        <div class="scale" id="scale" role="img" aria-label="Room temperature against the night watch thresholds">
+          <div class="scale-track">
+            <div class="scale-heatzone" id="scaleHeat"></div>
+            <div class="scale-band" id="scaleBand"></div>
+            <div class="scale-marker" id="scaleMarker" hidden></div>
+          </div>
+          <div class="scale-ticks" id="scaleTicks" aria-hidden="true"></div>
+          <div class="scale-legend" aria-hidden="true">
+            <span><span class="swatch heatzone"></span><span id="legHeat">Heats below 20°</span></span>
+            <span><span class="swatch band"></span><span id="legBand">Switches off at 22°</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="watch-panel" aria-labelledby="watchLabel">
+        <div class="watch-title">
+          <strong id="watchLabel">Night watch</strong>
+          <span class="pill" id="watchPill" data-state="off"><span id="watchPillIcon"></span><span id="watchPillText">Loading</span></span>
+        </div>
+        <p class="watch-sentence" id="watchSentence"></p>
+        <dl class="facts">
+          <dt>Window</dt><dd id="factWindow">--</dd>
+          <dt id="factTimingLabel">Starts</dt><dd id="factTiming">--</dd>
+          <dt>Last check</dt><dd id="factCheck">--</dd>
+          <dt>Last action</dt><dd id="factAction">None yet</dd>
+        </dl>
+        <p class="night-summary" id="nightSummary" hidden></p>
+      </div>
+    </section>
 
-  <section class="card span-12">
-    <h2>Temperature History</h2>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-      <div class="chips">
-        <button class="chip active" data-t="24h">24 h</button>
-        <button class="chip" data-t="7d">7 days</button>
-        <button class="chip" data-t="30d">30 days</button>
+    <section class="card" aria-labelledby="historyTitle">
+      <div class="card-head">
+        <div>
+          <h2 id="historyTitle">Temperature history</h2>
+          <div class="sub" id="historySub">Logged every minute</div>
+        </div>
+        <div class="chips" role="group" aria-label="Time range">
+          <button class="chip" type="button" data-range="24h" aria-pressed="true">24 hours</button>
+          <button class="chip" type="button" data-range="7d" aria-pressed="false">7 days</button>
+          <button class="chip" type="button" data-range="30d" aria-pressed="false">30 days</button>
+        </div>
       </div>
       <div class="stats">
-        <span>Min <b id="sMin">--</b>°C</span>
-        <span>Max <b id="sMax">--</b>°C</span>
-        <span>Points <b id="sCnt">--</b></span>
+        <div class="stat"><div class="label">Lowest</div><div class="value" id="statLow">--</div><div class="note" id="statLowNote">&nbsp;</div></div>
+        <div class="stat"><div class="label">Highest</div><div class="value" id="statHigh">--</div><div class="note" id="statHighNote">&nbsp;</div></div>
+        <div class="stat"><div class="label">Average</div><div class="value" id="statAvg">--</div><div class="note" id="statAvgNote">&nbsp;</div></div>
+        <div class="stat"><div class="label">Readings</div><div class="value" id="statCount">--</div><div class="note" id="statCountNote">&nbsp;</div></div>
       </div>
-    </div>
-    <div class="chartwrap"><canvas id="chart"></canvas></div>
-  </section>
+      <ul class="key" aria-label="Chart key">
+        <li><span class="k-line" aria-hidden="true"></span>Room temperature</li>
+        <li><span class="k-night" aria-hidden="true"></span><span id="keyNight">Night window</span></li>
+        <li><span class="k-heat" aria-hidden="true"></span>Heating (night watch)</li>
+        <li><span class="k-thresh" aria-hidden="true"></span><span id="keyThresh">Thresholds</span></li>
+      </ul>
+      <div class="chart-wrap" id="chartWrap">
+        <canvas id="chart" role="img" aria-label="Room temperature chart"></canvas>
+        <div class="chart-empty" id="chartEmpty" hidden></div>
+      </div>
+      <div class="chart-foot">
+        <span class="sub" id="zoneNote">Times in Europe/Lisbon</span>
+        <button class="link-btn" id="tableBtn" type="button" aria-expanded="false" aria-controls="tableWrap">Show as table</button>
+      </div>
+      <div class="table-wrap" id="tableWrap" hidden>
+        <table>
+          <caption id="tableCaption">Room temperature</caption>
+          <thead><tr><th scope="col">Period</th><th scope="col">Average</th><th scope="col">Low</th><th scope="col">High</th><th scope="col">Readings</th></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="activity">
+        <h3>Night watch activity</h3>
+        <ul class="events" id="events"></ul>
+      </div>
+    </section>
 
-  <section class="card span-8">
-    <h2>Device Status</h2>
-    <div class="statusgrid">
-      <div class="stat"><kbd>Power</kbd><v id="stPower">--</v></div>
-      <div class="stat"><kbd>Job mode</kbd><v id="stJob">--</v></div>
-      <div class="stat"><kbd>Fan speed</kbd><v id="stFan">--</v></div>
-      <div class="stat"><kbd>Target temp</kbd><v id="stTarget">--</v></div>
-    </div>
-  </section>
+    <div class="cols">
+      <section class="card" aria-labelledby="settingsTitle">
+        <div class="card-head"><h2 id="settingsTitle">Night watch settings</h2></div>
+        <div class="switch-row">
+          <div>
+            <div class="what" id="switchLabel">Night watch</div>
+            <div class="sub" id="switchSub">Keeps the room warm overnight</div>
+          </div>
+          <button class="switch" id="watchSwitch" type="button" role="switch" aria-checked="false" aria-labelledby="switchLabel"></button>
+        </div>
+        <form id="settingsForm" novalidate>
+          <div class="fields">
+            <div class="field">
+              <label for="lowIn">Heat when below</label>
+              <div class="control"><input id="lowIn" type="number" inputmode="decimal" step="0.5" min="5" max="29" required><span class="suffix">°C</span></div>
+            </div>
+            <div class="field">
+              <label for="highIn">Heat up to</label>
+              <div class="control"><input id="highIn" type="number" inputmode="numeric" step="1" min="16" max="30" required><span class="suffix">°C</span></div>
+              <span class="hint">Whole degrees; then it switches off</span>
+            </div>
+            <div class="field">
+              <label for="startSel">From</label>
+              <div class="control"><select id="startSel"></select></div>
+            </div>
+            <div class="field">
+              <label for="endSel">Until</label>
+              <div class="control"><select id="endSel"></select></div>
+            </div>
+            <div class="field full">
+              <label for="tzIn">Timezone</label>
+              <div class="control"><input id="tzIn" type="text" list="tzList" autocomplete="off" spellcheck="false" placeholder="Europe/Lisbon"></div>
+              <datalist id="tzList"><option value="Europe/Lisbon"><option value="Europe/London"><option value="UTC"></datalist>
+            </div>
+            <div class="field full">
+              <label class="check"><input id="fanIn" type="checkbox"> Gentle fan (low) while heating</label>
+            </div>
+          </div>
+          <p class="form-summary" id="formSummary"></p>
+          <p class="form-error" id="formError" role="alert"></p>
+          <div class="actions">
+            <button class="btn primary" id="saveBtn" type="submit" disabled>Save changes</button>
+            <button class="btn" id="resetBtn" type="button" disabled>Discard</button>
+          </div>
+        </form>
+      </section>
 
-  <section class="card span-4">
-    <h2>Quick Actions</h2>
-    <div class="btns" style="flex-direction:column">
-      <button class="primary" id="qaOn">Turn on heating</button>
-      <button id="qaOff">Turn off</button>
+      <section class="card" aria-labelledby="deviceTitle">
+        <div class="card-head"><h2 id="deviceTitle">Heat pump</h2><span class="sub" id="deviceChecked"></span></div>
+        <dl class="kv">
+          <div><dt>Power</dt><dd id="devPower">--</dd></div>
+          <div><dt>Mode</dt><dd id="devMode">--</dd></div>
+          <div><dt>Target</dt><dd id="devTarget">--</dd></div>
+          <div><dt>Fan</dt><dd id="devFan">--</dd></div>
+        </dl>
+        <div class="actions">
+          <button class="btn heat" id="heatNowBtn" type="button" disabled><span id="heatNowIcon"></span><span id="heatNowText">Heat now</span></button>
+          <button class="btn" id="offBtn" type="button" disabled>Turn off</button>
+        </div>
+        <p class="device-note" id="deviceNote">Manual commands go straight to the heat pump.</p>
+      </section>
     </div>
-    <div class="hint">Commands are rate-limited for safety. Night watch provides automatic gentle heat.</div>
-  </section>
-</div>
+  </div>
 </main>
 
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
 <script>
-const $ = id => document.getElementById(id);
-let chart, timeline = '24h';
+'use strict';
+const { DateTime } = luxon;
+const $ = (id) => document.getElementById(id);
 
-function fmt(n){ return n==null? '--' : Number(n).toFixed(1) }
-
-async function api(path, opts){
-  const r = await fetch(path, opts||{});
-  if(!r.ok) throw new Error(r.status);
-  return r.json();
+const ICONS = {
+  check: '<path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  alert: '<path d="M8 2.2l6.3 11.3H1.7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 6.6v3.2M8 11.8v.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+  flame: '<path d="M8 14.5c2.6 0 4.3-1.8 4.3-4.2 0-2.9-2.4-4.1-2.9-7.3C7.3 4.6 5.8 6.4 5.9 8.6c-.7-.4-1.2-1.2-1.3-2.1C3.9 7.6 3.7 8.7 3.7 10c0 2.6 1.8 4.5 4.3 4.5z" fill="currentColor"/>',
+  moon: '<path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8z" fill="currentColor"/>',
+  pause: '<path d="M5.8 4v8M10.2 4v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  stop: '<path d="M4 8h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  sun: '<circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+};
+function icon(name) {
+  return `<svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">${ICONS[name] || ''}</svg>`;
 }
 
-async function refreshStatus(){
-  try{
-    const s = await api('/api/status');
-    const t = s?.temperature?.currentTemperature;
-    const tgt = s?.temperature?.targetTemperature;
-    $('tempVal').textContent = t!=null ? t.toFixed(1) : '--';
-    $('tempCaption').textContent = 'Live · ' + new Date().toLocaleTimeString();
-    $('targetVal').textContent = fmt(tgt);
-    $('modeVal').textContent = s?.airConJobMode?.currentJobMode || s?.operation?.airConOperationMode || '--';
-    $('fanVal').textContent = s?.airFlow?.windStrength || '--';
-    $('stPower').textContent = s?.operation?.airConOperationMode || '--';
-    $('stJob').textContent = s?.airConJobMode?.currentJobMode || '--';
-    $('stFan').textContent = s?.airFlow?.windStrength || '--';
-    $('stTarget').textContent = fmt(tgt);
-    $('dot').className = 'dot';
-    $('statusText').textContent = 'live';
-  }catch(e){
-    $('dot').className = 'dot off';
-    $('statusText').textContent = 'offline';
+const S = {
+  overview: null, overviewError: null, temps: null, summary: null, summaryWin: null,
+  range: '24h', zone: 'Europe/Lisbon', chart: null, chartZone: null, dirty: false, tableOpen: false,
+};
+const RANGE_HOURS = { '24h': 24, '7d': 168, '30d': 720 };
+const RANGE_TEXT = { '24h': 'the last 24 hours', '7d': 'the last 7 days', '30d': 'the last 30 days' };
+
+/* ---------------------------------------------------------------- helpers */
+
+class ApiError extends Error {
+  constructor(message, status) { super(message); this.status = status; }
+}
+function errorText(body, status) {
+  const d = body && body.detail;
+  if (typeof d === 'string') return d;
+  if (Array.isArray(d)) {
+    const msgs = d.map((e) => String((e && e.msg) || '').replace(/^Value error, /, '')).filter(Boolean);
+    if (msgs.length) return msgs.join('; ');
+  }
+  return `Request failed (HTTP ${status})`;
+}
+async function api(path, opts = {}) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 25000);
+  try {
+    const r = await fetch(path, { ...opts, signal: ctl.signal, headers: { 'Content-Type': 'application/json' } });
+    let body = null;
+    try { body = await r.json(); } catch (_) { body = null; }
+    if (!r.ok) throw new ApiError(errorText(body, r.status), r.status);
+    return body;
+  } catch (e) {
+    if (e instanceof ApiError) throw e;
+    if (e && e.name === 'AbortError') throw new ApiError('The server took too long to answer.', 0);
+    throw new ApiError("Can't reach the Thermal Watch server.", 0);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+const num = (v) => (v === null || v === undefined || Number.isNaN(Number(v))) ? null : Number(v);
+function fmtT(v, digits = 1) { const n = num(v); return n === null ? '--' : n.toFixed(digits); }
+function fmtDeg(v) { const n = num(v); return n === null ? '--' : (Number.isInteger(n) ? String(n) : n.toFixed(1)); }
+const hourLabel = (h) => `${String(h).padStart(2, '0')}:00`;
+const nice = (s) => s ? String(s).charAt(0).toUpperCase() + String(s).slice(1).toLowerCase().replace(/_/g, ' ') : '--';
+const zoned = (iso) => DateTime.fromISO(iso, { zone: S.zone });
+const nowZ = () => DateTime.now().setZone(S.zone);
+function fmtHM(iso) { return iso ? zoned(iso).toFormat('HH:mm') : '--'; }
+function fmtWhen(iso) {
+  if (!iso) return '--';
+  const d = zoned(iso), now = nowZ();
+  if (d.hasSame(now, 'day')) return d.toFormat('HH:mm');
+  if (d.hasSame(now.minus({ days: 1 }), 'day')) return `yesterday ${d.toFormat('HH:mm')}`;
+  return d.toFormat('ccc d LLL, HH:mm');
+}
+function fmtDuration(ms) {
+  const m = Math.max(0, Math.round(ms / 60000));
+  const h = Math.floor(m / 60);
+  if (h >= 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
+  return h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m} min`;
+}
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function setText(id, text) { const el = $(id); if (el.textContent !== text) el.textContent = text; }
+
+let toastTimer = null;
+function toast(message, isError = false) {
+  const el = $('toast');
+  el.textContent = message;
+  el.classList.toggle('error', isError);
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), isError ? 8000 : 4000);
+}
+
+/* ---------------------------------------------------------------- theme */
+
+const THEME_KEY = 'thermal-watch-theme';
+function effectiveTheme() {
+  const t = document.documentElement.dataset.theme;
+  if (t === 'light' || t === 'dark') return t;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function renderThemeButton() {
+  const dark = effectiveTheme() === 'dark';
+  const btn = $('themeBtn');
+  btn.innerHTML = icon(dark ? 'sun' : 'moon');
+  btn.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+  btn.title = btn.getAttribute('aria-label');
+}
+try {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved;
+} catch (_) { /* storage unavailable: follow the system */ }
+$('themeBtn').addEventListener('click', () => {
+  const next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem(THEME_KEY, next); } catch (_) { /* not persisted */ }
+  renderThemeButton();
+  renderChart(true);
+});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  renderThemeButton();
+  renderChart(true);
+});
+renderThemeButton();
+
+/* ---------------------------------------------------------------- overview */
+
+function watchState(w) {
+  if (!w || w.error) return { key: 'bad', label: 'Unavailable', icon: 'alert' };
+  if (!w.enabled) return { key: 'off', label: 'Off', icon: 'pause' };
+  if (!w.running) return { key: 'bad', label: 'Not running', icon: 'alert' };
+  if (w.heating) return { key: 'heat', label: 'Heating', icon: 'flame' };
+  if (w.in_window) return { key: 'good', label: 'Watching', icon: 'check' };
+  return { key: 'armed', label: 'Armed', icon: 'moon' };
+}
+
+function renderBanner(problems) {
+  const banner = $('banner');
+  const list = $('bannerList');
+  list.replaceChildren();
+  for (const p of problems) {
+    const li = document.createElement('li');
+    li.textContent = p;
+    list.appendChild(li);
+  }
+  $('bannerIcon').innerHTML = icon('alert');
+  banner.hidden = problems.length === 0;
+}
+
+function renderScale(room, low, high) {
+  const l = num(low), h = num(high), r = num(room);
+  if (l === null || h === null) return;
+  const lo = Math.floor(Math.min(16, l - 2, r === null ? l : r - 1));
+  const hi = Math.ceil(Math.max(28, h + 2, r === null ? h : r + 1));
+  const pct = (v) => `${((v - lo) / (hi - lo)) * 100}%`;
+  $('scaleHeat').style.width = pct(l);
+  const band = $('scaleBand');
+  band.style.left = pct(l);
+  band.style.width = `calc(${pct(h)} - ${pct(l)})`;
+  const marker = $('scaleMarker');
+  marker.hidden = r === null;
+  if (r !== null) marker.style.left = pct(Math.min(hi, Math.max(lo, r)));
+  const ticks = $('scaleTicks');
+  ticks.replaceChildren();
+  for (let t = Math.ceil(lo / 2) * 2; t <= hi; t += 2) {
+    const s = document.createElement('span');
+    s.style.left = pct(t);
+    s.textContent = `${t}°`;
+    ticks.appendChild(s);
+  }
+  setText('legHeat', `Heats below ${fmtDeg(l)}°`);
+  setText('legBand', `Heats up to ${fmtDeg(h)}°, then off`);
+  $('scale').setAttribute('aria-label',
+    `Room ${r === null ? 'unknown' : fmtT(r) + '°C'}. The night watch heats when the room is below ${fmtDeg(l)}°C, up to ${fmtDeg(h)}°C.`);
+}
+
+function deviceSentence(d) {
+  const mode = nice(d.job_mode).toLowerCase();
+  const fan = nice(d.fan_speed).toLowerCase();
+  if (d.is_on) return `Heat pump on · ${mode} to ${fmtDeg(d.target_temp_c)}°C · fan ${fan}`;
+  return `Heat pump off · last set to ${mode} ${fmtDeg(d.target_temp_c)}°C, fan ${fan}`;
+}
+
+function renderWatch(w, cfg) {
+  const st = watchState(w);
+  const pill = $('watchPill');
+  pill.dataset.state = st.key;
+  $('watchPillIcon').innerHTML = icon(st.icon);
+  setText('watchPillText', st.label);
+  const low = fmtDeg(cfg.low_threshold_c), high = fmtDeg(cfg.high_target_c);
+  const fan = cfg.fan_low ? ' with the fan on low' : '';
+  const startH = hourLabel(cfg.night_start_hour), endH = hourLabel(cfg.night_end_hour);
+  let sentence;
+  if (!w || w.error) sentence = "The night watch can't run without access to the heat pump.";
+  else if (!w.enabled) sentence = `Off. When on, it keeps the room above ${low}°C from ${startH} to ${endH}.`;
+  else if (!w.running) sentence = 'Enabled, but the watch loop is not running.';
+  else if (w.heating) sentence = `Heating to ${high}°C${fan} since ${fmtHM(w.heating_since)}. It switches off at ${high}°C, or at ${endH} when the window closes.`;
+  else if (w.in_window) sentence = `Watching until ${endH}. If the room drops below ${low}°C, it heats to ${high}°C${fan}, then switches off.`;
+  else sentence = `Starts at ${startH} and watches until ${endH}. If the room drops below ${low}°C, it heats to ${high}°C${fan}.`;
+  setText('watchSentence', sentence);
+  setText('factWindow', `${startH}–${endH} · ${S.zone}`);
+  if (w && w.window_start && w.enabled && w.running !== false) {
+    const now = Date.now();
+    if (w.in_window) {
+      setText('factTimingLabel', 'Ends');
+      setText('factTiming', `${fmtHM(w.window_end)} (in ${fmtDuration(Date.parse(w.window_end) - now)})`);
+    } else {
+      setText('factTimingLabel', 'Starts');
+      const start = zoned(w.window_start);
+      const day = start.hasSame(nowZ(), 'day') ? 'today' : (start.hasSame(nowZ().plus({ days: 1 }), 'day') ? 'tomorrow' : start.toFormat('ccc d LLL'));
+      setText('factTiming', `${day} ${start.toFormat('HH:mm')} (in ${fmtDuration(Date.parse(w.window_start) - now)})`);
+    }
+  } else {
+    setText('factTimingLabel', 'Next window');
+    setText('factTiming', w && w.enabled ? '--' : 'Night watch is off');
+  }
+  setText('factCheck', w && w.last_tick_at
+    ? `${fmtHM(w.last_tick_at)}${num(w.last_room_temp_c) !== null ? ` · room ${fmtT(w.last_room_temp_c)}°C` : ''}`
+    : '--');
+  setText('factAction', w && w.last_action ? `${fmtWhen(w.last_action_at)} · ${w.last_action}` : 'None yet');
+}
+
+function renderDevice(d, cfg, checkedAt) {
+  const ok = !!(d && d.ok);
+  setText('devPower', ok ? (d.is_on ? 'On' : 'Off') : '--');
+  setText('devMode', ok ? nice(d.job_mode) : '--');
+  setText('devTarget', ok && num(d.target_temp_c) !== null ? `${fmtDeg(d.target_temp_c)}°C` : '--');
+  setText('devFan', ok ? nice(d.fan_speed) : '--');
+  setText('deviceChecked', ok ? `Checked ${fmtHM(checkedAt)}` : 'Unavailable');
+  $('heatNowIcon').innerHTML = icon('flame');
+  setText('heatNowText', `Heat to ${fmtDeg(cfg.high_target_c)}°C now`);
+  if (!S.deviceBusy) {
+    $('heatNowBtn').disabled = !ok;
+    $('offBtn').disabled = !ok || !d.is_on;
+  }
+  setText('deviceNote', cfg.enabled
+    ? `Manual commands go straight to the heat pump. While the night watch is on, it still heats below ${fmtDeg(cfg.low_threshold_c)}°C during its window.`
+    : 'Manual commands go straight to the heat pump. Manual heating stays on until you turn it off.');
+}
+
+function renderOverview() {
+  const o = S.overview;
+  const conn = $('conn');
+  if (!o) {
+    conn.dataset.state = 'bad';
+    setText('connText', 'Server unreachable');
+    if (S.overviewError) {
+      renderBanner([`${S.overviewError.message} Is the service running? Check: systemctl --user status lg-thermal-watch`]);
+    }
+    return;
+  }
+  const dev = o.device || {}, w = o.watch || {}, cfg = o.config || {};
+  const zone = w.timezone || cfg.timezone;
+  if (zone && zone !== S.zone) { S.zone = zone; renderChart(true); }
+  setText('zoneNote', `Times in ${S.zone}`);
+
+  conn.dataset.state = S.overviewError ? 'bad' : (dev.ok ? 'ok' : 'bad');
+  setText('connText', S.overviewError ? 'Reconnecting…' : (dev.ok ? `Live · ${fmtHM(o.now)}` : 'Heat pump unreachable'));
+
+  const problems = [];
+  if (S.overviewError) problems.push(`${S.overviewError.message} Showing the last known state.`);
+  if (!dev.ok) problems.push(`Can't read the heat pump: ${dev.error || 'no status returned'}.`);
+  if (w.enabled && w.running === false && !w.error) problems.push('The night watch is enabled but not running. Restart it with: systemctl --user restart lg-thermal-watch');
+  if (w.last_error) problems.push(`Night watch: the last check failed (${w.last_error}). It retries every minute.`);
+  if (o.logger && o.logger.last_error) problems.push(`Temperature logger: ${o.logger.last_error}`);
+  renderBanner(problems);
+
+  const latest = S.temps && S.temps.stats && S.temps.stats.latest;
+  const room = dev.ok ? dev.room_temp_c : (latest ? latest.temp_c : null);
+  setText('roomTemp', fmtT(room));
+  setText('roomCaption', dev.ok ? deviceSentence(dev) : (latest ? `Last logged ${fmtWhen(latest.ts)}` : 'No reading yet'));
+  renderScale(room, cfg.low_threshold_c, cfg.high_target_c);
+  renderWatch(w, cfg);
+  renderDevice(dev, cfg, o.now);
+  renderSwitch(cfg, w);
+  if (!S.dirty) fillForm(cfg);
+  setText('keyThresh', `Thresholds ${fmtDeg(cfg.low_threshold_c)}° / ${fmtDeg(cfg.high_target_c)}°`);
+  setText('keyNight', `Night window ${hourLabel(cfg.night_start_hour)}–${hourLabel(cfg.night_end_hour)}`);
+}
+
+async function refreshOverview() {
+  try {
+    S.overview = await api('/api/overview');
+    S.overviewError = null;
+  } catch (e) {
+    S.overviewError = e;
+  }
+  renderOverview();
+}
+
+/* ---------------------------------------------------------------- night summary */
+
+function heatingPeriods(events, startMs, endMs, heatingNow) {
+  const out = [];
+  let open = null;
+  for (const e of events || []) {
+    const t = Date.parse(e.ts);
+    if (e.kind === 'heat_start') {
+      if (open === null) open = t;
+    } else if (e.kind === 'heat_stop' || e.kind === 'released') {
+      out.push([open === null ? startMs : open, t]);
+      open = null;
+    }
+  }
+  if (open !== null) out.push([open, heatingNow ? Math.max(Date.now(), open) : endMs]);
+  return out.filter(([a, b]) => b > a);
+}
+
+function summaryWindow(w) {
+  if (!w || !w.window_start) return null;
+  const start = zoned(w.window_start), end = zoned(w.window_end);
+  if (w.in_window) return { label: 'Tonight so far', start, end: nowZ(), live: true };
+  return { label: 'Last night', start: start.minus({ days: 1 }), end: end.minus({ days: 1 }), live: false };
+}
+
+async function refreshSummary() {
+  const win = summaryWindow(S.overview && S.overview.watch);
+  S.summaryWin = win;
+  if (!win) { renderSummary(); return; }
+  const q = (dt) => encodeURIComponent(dt.toUTC().toISO({ suppressMilliseconds: true }));
+  try {
+    S.summary = await api(`/api/temps?start=${q(win.start)}&end=${q(win.end)}&bucket_s=3600`);
+  } catch (_) {
+    S.summary = null;
+  }
+  renderSummary();
+}
+
+function renderSummary() {
+  const el = $('nightSummary');
+  const win = S.summaryWin, s = S.summary;
+  if (!win || !s) { el.hidden = true; return; }
+  el.hidden = false;
+  el.replaceChildren();
+  const head = document.createElement('b');
+  head.textContent = `${win.label} (${win.start.toFormat('HH:mm')}–${win.live ? 'now' : win.end.toFormat('HH:mm')}): `;
+  el.appendChild(head);
+  let text;
+  if (!s.count) {
+    text = 'no readings logged.';
+  } else {
+    const periods = heatingPeriods(s.events, win.start.toMillis(), win.end.toMillis(),
+      win.live && S.overview && S.overview.watch && S.overview.watch.heating);
+    const total = periods.reduce((acc, [a, b]) => acc + (b - a), 0);
+    const heat = periods.length
+      ? `heating ran ${periods.length === 1 ? 'once' : `${periods.length} times`} (${fmtDuration(total)} in total)`
+      : (win.live ? 'no heating needed so far' : 'no heating needed');
+    text = `low ${fmtT(s.stats.min.temp_c)}°C at ${fmtHM(s.stats.min.ts)}, high ${fmtT(s.stats.max.temp_c)}°C. ${nice(heat)}.`;
+  }
+  el.appendChild(document.createTextNode(text));
+}
+
+/* ---------------------------------------------------------------- history */
+
+async function loadTemps(dim) {
+  const wrap = $('chartWrap');
+  if (dim) wrap.classList.add('loading');
+  try {
+    const range = S.range;
+    const d = await api(`/api/temps?timeline=${range}`);
+    if (range !== S.range) return;  // a newer range was picked meanwhile
+    S.temps = d;
+    renderHistory();
+  } catch (e) {
+    toast(`Couldn't load the temperature history: ${e.message}`, true);
+  } finally {
+    wrap.classList.remove('loading');
   }
 }
 
-async function refreshTemps(){
-  try{
-    const d = await api(`/api/temps?timeline=${timeline}`);
-    $('sMin').textContent = fmt(d.min_temp_c);
-    $('sMax').textContent = fmt(d.max_temp_c);
-    $('sCnt').textContent = d.count ?? 0;
-    const data = d.readings.map(r=>({x:new Date(r.ts), y: r.temp_c}));
-    if(chart){
-      chart.data.datasets[0].data = data;
-      chart.update();
-    }else{
-      const ctx = $('chart').getContext('2d');
-      chart = new Chart(ctx,{
-        type:'line',
-        data:{datasets:[{label:'Room °C', data, borderColor:'#22d3ee', backgroundColor:'rgba(34,211,238,.12)', fill:true, tension:.35, pointRadius:0, borderWidth:2}]},
-        options:{
-          responsive:true, maintainAspectRatio:false,
-          plugins:{legend:{display:false}},
-          scales:{
-            x:{type:'time', time:{unit: timeline==='30d'?'day':timeline==='7d'?'hour':'hour'}, grid:{color:'rgba(255,255,255,.06)'}},
-            y:{min:10,max:32,grid:{color:'rgba(255,255,255,.06)'}}
-          }
-        }
-      });
-    }
-  }catch(e){ console.warn(e) }
-}
-
-async function loadConfig(){
-  try{
-    const c = await api('/api/nightwatch/config');
-    $('nwSwitch').classList.toggle('on', !!c.enabled);
-    $('nwBadge').textContent = c.enabled?'on':'off';
-    $('nwBadge').style.color = c.enabled?'var(--ok)':'var(--muted)';
-    $('lowIn').value = c.low_threshold_c;
-    $('highIn').value = c.high_target_c;
-    const pad = h => String(h).padStart(2,'0')+':00';
-    $('startIn').value = pad(c.night_start_hour);
-    $('endIn').value = pad(c.night_end_hour);
-  }catch(e){}
-}
-
-async function saveConfig(){
-  const payload = {
-    enabled: $('nwSwitch').classList.contains('on'),
-    low_threshold_c: parseFloat($('lowIn').value),
-    high_target_c: parseFloat($('highIn').value),
-    fan_low:true,
-    night_start_hour: parseInt($('startIn').value.slice(0,2)),
-    night_end_hour: parseInt($('endIn').value.slice(0,2))
+function renderStats(d) {
+  const st = d.stats || {};
+  const tile = (id, value, note) => {
+    const el = $(id);
+    el.replaceChildren();
+    el.appendChild(document.createTextNode(value));
+    if (value !== '--') { const u = document.createElement('small'); u.textContent = '°C'; el.appendChild(u); }
+    setText(`${id}Note`, note || ' ');
   };
-  await api('/api/nightwatch/config',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-  await loadConfig();
+  tile('statLow', st.min ? fmtT(st.min.temp_c) : '--', st.min ? fmtWhen(st.min.ts) : '');
+  tile('statHigh', st.max ? fmtT(st.max.temp_c) : '--', st.max ? fmtWhen(st.max.ts) : '');
+  tile('statAvg', fmtT(st.mean_c), st.count ? `over ${RANGE_TEXT[S.range].replace('the ', '')}` : '');
+  setText('statCount', (st.count || 0).toLocaleString());
+  setText('statCountNote', d.bucket_s ? `charted as ${Math.round(d.bucket_s / 60)}-min averages` : 'one a minute');
+  const first = d.readings && d.readings.length ? d.readings[0].ts : null;
+  const since = first && Date.parse(first) > Date.now() - RANGE_HOURS[S.range] * 3600e3 + 3600e3;
+  setText('historySub', since ? `Logged every minute · data since ${fmtWhen(first)}` : 'Logged every minute');
 }
 
-$('nwSwitch').onclick = async ()=>{
-  $('nwSwitch').classList.toggle('on');
-  await saveConfig();
+function toPoints(d) {
+  const pts = [];
+  const step = Math.max(60, d.bucket_s || 60) * 1000;
+  const gap = Math.max(5 * 60 * 1000, 3 * step);
+  let prev = null;
+  for (const r of d.readings || []) {
+    const x = Date.parse(r.ts);
+    if (prev !== null && x - prev > gap) pts.push({ x: prev + (x - prev) / 2, y: null });
+    pts.push({ x, y: r.temp_c, min: r.min_c, max: r.max_c, n: r.n });
+    prev = x;
+  }
+  return pts;
+}
+
+function nightWindows(xMin, xMax, cfg) {
+  if (S.range === '30d') return [];
+  const out = [];
+  const hours = ((cfg.night_end_hour - cfg.night_start_hour) + 24) % 24 || 24;
+  let day = DateTime.fromMillis(xMin, { zone: S.zone }).startOf('day').minus({ days: 1 });
+  const stop = DateTime.fromMillis(xMax, { zone: S.zone }).plus({ days: 1 });
+  while (day < stop) {
+    const s = day.set({ hour: cfg.night_start_hour });
+    const e = s.plus({ hours });
+    if (e.toMillis() > xMin && s.toMillis() < xMax) out.push([Math.max(xMin, s.toMillis()), Math.min(xMax, e.toMillis())]);
+    day = day.plus({ days: 1 });
+  }
+  return out;
+}
+
+function gapRegions(points, xMin, xMax) {
+  const real = points.filter((p) => p.y !== null);
+  const minWidth = (xMax - xMin) * 0.08;
+  const out = [];
+  if (!real.length) return out;
+  if (real[0].x - xMin > minWidth) out.push([xMin, real[0].x]);
+  for (let i = 1; i < points.length - 1; i++) {
+    if (points[i].y === null) {
+      const a = points[i - 1].x, b = points[i + 1].x;
+      if (b - a > minWidth) out.push([a, b]);
+    }
+  }
+  const last = real[real.length - 1].x;
+  if (xMax - last > minWidth) out.push([last, xMax]);
+  return out;
+}
+
+const overlayPlugin = {
+  id: 'overlay',
+  beforeDatasetsDraw(chart, _args, o) {
+    const { ctx, chartArea: a, scales: { x, y } } = chart;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(a.left, a.top, a.width, a.height);
+    ctx.clip();
+    ctx.font = `500 11px ${o.font}`;
+    for (const [s, e] of o.nights) {
+      const x0 = x.getPixelForValue(s), x1 = x.getPixelForValue(e);
+      ctx.fillStyle = o.colors.night;
+      ctx.fillRect(x0, a.top, x1 - x0, a.height);
+      if (o.labelNights && x1 - x0 > 70) {
+        ctx.fillStyle = o.colors.muted;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('night window', x0 + 6, a.top + 6);
+      }
+    }
+    for (const [s, e] of o.heating) {
+      const x0 = x.getPixelForValue(s), x1 = Math.max(x.getPixelForValue(e), x0 + 2);
+      ctx.fillStyle = o.colors.heatWash;
+      ctx.fillRect(x0, a.top, x1 - x0, a.height);
+      ctx.fillStyle = o.colors.heat;
+      ctx.fillRect(x0, a.bottom - 4, x1 - x0, 4);
+    }
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = o.colors.muted;
+    for (const [s, e] of o.gaps) {
+      const cx = (x.getPixelForValue(s) + x.getPixelForValue(e)) / 2;
+      ctx.fillText('no readings', cx, a.top + a.height / 2);
+    }
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = o.colors.threshold;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    for (const t of o.thresholds) {
+      if (t.value < y.min || t.value > y.max) continue;
+      const py = Math.round(y.getPixelForValue(t.value)) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(a.left, py);
+      ctx.lineTo(a.right, py);
+      ctx.stroke();
+      ctx.fillStyle = o.colors.label;
+      ctx.fillText(t.label, a.left + 6, py - 3);
+    }
+    ctx.restore();
+  },
+  afterDatasetsDraw(chart, _args, o) {
+    const { ctx, chartArea: a } = chart;
+    const meta = chart.getDatasetMeta(0);
+    const els = meta.data || [];
+    let last = null;
+    for (let i = els.length - 1; i >= 0; i--) {
+      const raw = chart.data.datasets[0].data[i];
+      if (raw && raw.y !== null) { last = { el: els[i], raw }; break; }
+    }
+    ctx.save();
+    const active = chart.tooltip && chart.tooltip.getActiveElements ? chart.tooltip.getActiveElements() : [];
+    if (active && active.length) {
+      const px = Math.round(active[0].element.x) + 0.5;
+      ctx.strokeStyle = o.colors.crosshair;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px, a.top);
+      ctx.lineTo(px, a.bottom);
+      ctx.stroke();
+    }
+    if (last && last.el.x >= a.left && last.el.x <= a.right) {
+      ctx.beginPath();
+      ctx.arc(last.el.x, last.el.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = o.colors.series;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = o.colors.surface;
+      ctx.stroke();
+      const label = `${fmtT(last.raw.y)}°`;
+      ctx.font = `600 12px ${o.font}`;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = o.colors.surface;  // halo keeps the label legible where it crosses the line
+      ctx.strokeText(label, last.el.x - 6, last.el.y - 8);
+      ctx.fillStyle = o.colors.text;
+      ctx.fillText(label, last.el.x - 6, last.el.y - 8);
+    }
+    ctx.restore();
+  },
 };
 
-$('saveBtn').onclick = saveConfig;
-$('startBtn').onclick = async ()=>{ await api('/api/nightwatch/start',{method:'POST'}); await loadConfig(); };
-$('stopBtn').onclick = async ()=>{ await api('/api/nightwatch/stop',{method:'POST'}); await loadConfig(); };
+function chartModel() {
+  const d = S.temps;
+  const cfg = (S.overview && S.overview.config) || { low_threshold_c: 20, high_target_c: 22, night_start_hour: 0, night_end_hour: 7 };
+  const points = toPoints(d);
+  const real = points.filter((p) => p.y !== null);
+  const xMax = Date.now();
+  let xMin = xMax - RANGE_HOURS[S.range] * 3600e3;
+  if (S.range !== '24h' && real.length && real[0].x > xMin) xMin = real[0].x - (xMax - real[0].x) * 0.02;
+  const low = num(cfg.low_threshold_c), high = num(cfg.high_target_c);
+  const ys = real.flatMap((p) => [p.min !== undefined && p.min !== null ? p.min : p.y, p.max !== undefined && p.max !== null ? p.max : p.y]);
+  const refs = [low, high].filter((v) => v !== null);
+  const yMin = Math.floor(Math.min(...ys, ...refs) - 0.5);
+  const yMax = Math.ceil(Math.max(...ys, ...refs) + 0.5);
+  const heatingNow = !!(S.overview && S.overview.watch && S.overview.watch.heating);
+  return {
+    points, real, xMin, xMax, yMin, yMax,
+    nights: nightWindows(xMin, xMax, cfg),
+    heating: heatingPeriods(d.events, xMin, xMax, heatingNow),
+    gaps: gapRegions(points, xMin, xMax),
+    thresholds: [
+      high !== null ? { value: high, label: `${fmtDeg(high)}° heat off` } : null,
+      low !== null ? { value: low, label: `${fmtDeg(low)}° heat on below` } : null,
+    ].filter(Boolean),
+  };
+}
 
-document.querySelectorAll('.chip').forEach(b=>{
-  b.onclick = ()=>{ document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active')); b.classList.add('active'); timeline=b.dataset.t; refreshTemps(); };
+function chartOptions(m) {
+  const font = cssVar('--font') || 'system-ui, sans-serif';
+  const colors = {
+    series: cssVar('--series'), surface: cssVar('--surface'), text: cssVar('--text-1'), label: cssVar('--text-2'),
+    muted: cssVar('--muted'), grid: cssVar('--grid'), axis: cssVar('--axis'), night: cssVar('--night-wash'),
+    heat: cssVar('--heat'), heatWash: cssVar('--heat-wash'), threshold: cssVar('--text-2'), crosshair: cssVar('--axis'),
+    tooltip: cssVar('--tooltip'), border: cssVar('--border'),
+  };
+  const unit = S.range === '24h' ? 'hour' : 'day';
+  const tickFormat = S.range === '24h' ? 'HH:mm' : (S.range === '7d' ? 'ccc d' : 'd LLL');
+  // Ticks on local (watch-timezone) boundaries: every 3 h from midnight for 24 h, at midnight otherwise.
+  const buildTicks = (axis) => {
+    const ticks = [];
+    const days = (axis.max - axis.min) / 864e5;
+    const everyDays = S.range === '30d' ? Math.max(1, Math.ceil(days / 8)) : 1;
+    let t = DateTime.fromMillis(axis.min, { zone: S.zone }).startOf('day');
+    while (t.toMillis() <= axis.max) {
+      if (t.toMillis() >= axis.min) ticks.push({ value: t.toMillis() });
+      t = S.range === '24h' ? t.plus({ hours: 3 }) : t.plus({ days: everyDays });
+    }
+    axis.ticks = ticks;
+  };
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    parsing: false,
+    normalized: true,
+    interaction: { mode: 'nearest', axis: 'x', intersect: false },
+    layout: { padding: { top: 8, right: 10 } },
+    scales: {
+      x: {
+        type: 'time',
+        min: m.xMin,
+        max: m.xMax,
+        adapters: { date: { zone: S.zone } },
+        time: { unit, displayFormats: { hour: 'HH:mm', day: tickFormat } },
+        afterBuildTicks: buildTicks,
+        grid: { color: colors.grid, drawTicks: false },
+        border: { color: colors.axis },
+        ticks: {
+          color: colors.muted, maxRotation: 0, autoSkip: true, autoSkipPadding: 18, padding: 8,
+          font: { family: font, size: 11 },
+          callback: (value) => DateTime.fromMillis(value, { zone: S.zone }).toFormat(tickFormat),
+        },
+      },
+      y: {
+        min: m.yMin,
+        max: m.yMax,
+        grid: { color: colors.grid, drawTicks: false },
+        border: { display: false },
+        ticks: {
+          color: colors.muted, padding: 8, stepSize: m.yMax - m.yMin > 9 ? 2 : 1,
+          font: { family: font, size: 11 }, callback: (v) => `${v}°`,
+        },
+      },
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        displayColors: false,
+        backgroundColor: colors.tooltip,
+        titleColor: colors.text,
+        bodyColor: colors.label,
+        borderColor: colors.border,
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 10,
+        caretSize: 0,
+        titleFont: { family: font, size: 15, weight: '600' },
+        bodyFont: { family: font, size: 12 },
+        filter: (item) => item.raw && item.raw.y !== null,
+        callbacks: {
+          title: (items) => (items.length ? `${fmtT(items[0].raw.y)}°C` : ''),
+          label: (item) => {
+            const r = item.raw;
+            const when = DateTime.fromMillis(r.x, { zone: S.zone }).toFormat(S.range === '24h' ? 'ccc HH:mm' : 'ccc d LLL, HH:mm');
+            return r.n ? [when, `average of ${r.n} · ${fmtT(r.min)}–${fmtT(r.max)}°C`] : when;
+          },
+        },
+      },
+      overlay: {
+        font, colors, nights: m.nights, heating: m.heating, gaps: m.gaps, thresholds: m.thresholds,
+        labelNights: S.range === '24h',
+      },
+    },
+  };
+}
+
+function renderChart(rebuild) {
+  if (!S.temps) return;
+  const m = chartModel();
+  const empty = $('chartEmpty');
+  empty.hidden = m.real.length > 0;
+  if (!m.real.length) empty.textContent = `No readings in ${RANGE_TEXT[S.range]}. The logger records one every minute while the service runs.`;
+  const dataset = {
+    label: 'Room temperature',
+    data: m.points,
+    borderColor: cssVar('--series'),
+    borderWidth: 2,
+    borderJoinStyle: 'round',
+    borderCapStyle: 'round',
+    pointRadius: 0,
+    pointHitRadius: 14,
+    pointHoverRadius: 5,
+    pointHoverBackgroundColor: cssVar('--series'),
+    pointHoverBorderColor: cssVar('--surface'),
+    pointHoverBorderWidth: 2,
+    cubicInterpolationMode: 'monotone',
+    tension: 0.3,
+    spanGaps: false,
+    fill: false,
+  };
+  if (S.chart && (rebuild || S.chartZone !== S.zone)) { S.chart.destroy(); S.chart = null; }
+  if (!S.chart) {
+    S.chart = new Chart($('chart'), { type: 'line', data: { datasets: [dataset] }, options: chartOptions(m), plugins: [overlayPlugin] });
+    S.chartZone = S.zone;
+  } else {
+    S.chart.data.datasets[0] = dataset;
+    S.chart.options = chartOptions(m);
+    S.chart.update('none');
+  }
+  const st = S.temps.stats || {};
+  $('chart').setAttribute('aria-label', st.count
+    ? `Room temperature over ${RANGE_TEXT[S.range]}: low ${fmtT(st.min && st.min.temp_c)}°C, high ${fmtT(st.max && st.max.temp_c)}°C, latest ${fmtT(st.latest && st.latest.temp_c)}°C. Use "Show as table" for the values.`
+    : `No room temperature readings in ${RANGE_TEXT[S.range]}.`);
+}
+
+function renderTable() {
+  const tbody = $('tableBody');
+  tbody.replaceChildren();
+  if (!S.tableOpen || !S.temps) return;
+  const per = { '24h': 1, '7d': 6, '30d': 24 }[S.range];
+  const groups = new Map();
+  for (const r of S.temps.readings || []) {
+    const t = DateTime.fromISO(r.ts, { zone: S.zone });
+    const key = per === 24 ? t.startOf('day') : t.startOf('day').set({ hour: Math.floor(t.hour / per) * per });
+    const k = key.toMillis();
+    let g = groups.get(k);
+    if (!g) { g = { t: key, sum: 0, n: 0, min: Infinity, max: -Infinity }; groups.set(k, g); }
+    const n = r.n || 1;
+    g.sum += r.temp_c * n;
+    g.n += n;
+    g.min = Math.min(g.min, r.min_c !== undefined ? r.min_c : r.temp_c);
+    g.max = Math.max(g.max, r.max_c !== undefined ? r.max_c : r.temp_c);
+  }
+  const rows = [...groups.values()].sort((a, b) => b.t.toMillis() - a.t.toMillis());
+  for (const g of rows) {
+    const tr = document.createElement('tr');
+    const period = per === 24 ? g.t.toFormat('ccc d LLL')
+      : `${g.t.toFormat('ccc d LLL, HH:mm')}–${g.t.plus({ hours: per }).toFormat('HH:mm')}`;
+    for (const text of [period, `${fmtT(g.sum / g.n)}°C`, `${fmtT(g.min)}°C`, `${fmtT(g.max)}°C`, g.n.toLocaleString()]) {
+      const td = document.createElement('td');
+      td.textContent = text;
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  const unit = per === 24 ? 'day' : (per === 1 ? 'hour' : `${per} hours`);
+  setText('tableCaption', rows.length
+    ? `Room temperature per ${unit}, ${RANGE_TEXT[S.range]}, newest first (${S.zone})`
+    : `No readings in ${RANGE_TEXT[S.range]}.`);
+}
+
+function renderEvents() {
+  const list = $('events');
+  list.replaceChildren();
+  const events = ((S.temps && S.temps.events) || []).slice().reverse().slice(0, 50);
+  if (!events.length) {
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    span.className = 'empty';
+    span.textContent = `No night watch actions in ${RANGE_TEXT[S.range]}. It only acts when the room drops below the low threshold during its window.`;
+    li.appendChild(span);
+    li.style.gridTemplateColumns = '1fr';
+    list.appendChild(li);
+    return;
+  }
+  const iconFor = { heat_start: 'flame', heat_stop: 'stop', released: 'stop', error: 'alert' };
+  for (const e of events) {
+    const li = document.createElement('li');
+    li.dataset.kind = e.kind;
+    const time = document.createElement('time');
+    time.dateTime = e.ts;
+    time.textContent = fmtWhen(e.ts);
+    const ic = document.createElement('span');
+    ic.innerHTML = icon(iconFor[e.kind] || 'check');
+    const text = document.createElement('span');
+    text.textContent = e.detail;
+    li.append(time, ic, text);
+    list.appendChild(li);
+  }
+}
+
+function renderHistory() {
+  if (!S.temps) return;
+  renderStats(S.temps);
+  renderChart(false);
+  renderTable();
+  renderEvents();
+  if (S.overview) renderOverview();  // hero falls back to the latest logged reading when the unit is unreachable
+}
+
+document.querySelectorAll('.chip').forEach((chip) => {
+  chip.addEventListener('click', () => {
+    if (S.range === chip.dataset.range) return;
+    S.range = chip.dataset.range;
+    document.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
+    loadTemps(true);
+  });
 });
 
-$('qaOn').onclick = async ()=>{ await api('/api/nightwatch/start',{method:'POST'}); refreshStatus(); };
-$('qaOff').onclick = async ()=>{ await api('/api/nightwatch/stop',{method:'POST'}); refreshStatus(); };
+$('tableBtn').addEventListener('click', () => {
+  S.tableOpen = !S.tableOpen;
+  $('tableWrap').hidden = !S.tableOpen;
+  $('tableBtn').setAttribute('aria-expanded', String(S.tableOpen));
+  setText('tableBtn', S.tableOpen ? 'Hide table' : 'Show as table');
+  renderTable();
+});
 
-refreshStatus(); refreshTemps(); loadConfig();
-setInterval(()=>{ refreshStatus(); refreshTemps(); }, 30000);
+/* ---------------------------------------------------------------- settings */
+
+(function fillHours() {
+  for (const id of ['startSel', 'endSel']) {
+    const sel = $(id);
+    for (let h = 0; h < 24; h++) {
+      const opt = document.createElement('option');
+      opt.value = String(h);
+      opt.textContent = hourLabel(h);
+      sel.appendChild(opt);
+    }
+  }
+  const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (browserZone && !['Europe/Lisbon', 'Europe/London', 'UTC'].includes(browserZone)) {
+    const opt = document.createElement('option');
+    opt.value = browserZone;
+    $('tzList').appendChild(opt);
+  }
+})();
+
+function readForm() {
+  return {
+    low_threshold_c: parseFloat($('lowIn').value),
+    high_target_c: parseFloat($('highIn').value),
+    night_start_hour: parseInt($('startSel').value, 10),
+    night_end_hour: parseInt($('endSel').value, 10),
+    timezone: $('tzIn').value.trim() || null,
+    fan_low: $('fanIn').checked,
+    enabled: !!(S.overview && S.overview.config && S.overview.config.enabled),
+  };
+}
+
+function validate(c) {
+  if (Number.isNaN(c.low_threshold_c)) return 'Enter the temperature that should start heating.';
+  if (Number.isNaN(c.high_target_c)) return 'Enter the temperature to heat up to.';
+  if (c.low_threshold_c < 5 || c.low_threshold_c > 29) return 'The low threshold must be between 5 and 29°C.';
+  if (c.high_target_c < 16 || c.high_target_c > 30) return 'The heat pump accepts targets from 16 to 30°C.';
+  if (!Number.isInteger(c.high_target_c)) return 'Use a whole number for "Heat up to"; the heat pump takes whole degrees.';
+  if (c.low_threshold_c >= c.high_target_c) return '"Heat when below" must be lower than "Heat up to".';
+  if (c.night_start_hour === c.night_end_hour) return 'The window needs different start and end times.';
+  return '';
+}
+
+function describeConfig(c) {
+  const hours = ((c.night_end_hour - c.night_start_hour) + 24) % 24 || 24;
+  const fan = c.fan_low ? ' with the fan on low' : '';
+  return `Every night from ${hourLabel(c.night_start_hour)} to ${hourLabel(c.night_end_hour)} (${hours} h, ${c.timezone || S.zone}): `
+    + `if the room drops below ${fmtDeg(c.low_threshold_c)}°C, heat to ${fmtDeg(c.high_target_c)}°C${fan}, then switch off. `
+    + `If it is still heating at ${hourLabel(c.night_end_hour)}, it switches off.`;
+}
+
+function fillForm(cfg) {
+  if (!cfg || cfg.low_threshold_c === undefined) return;
+  $('lowIn').value = cfg.low_threshold_c;
+  $('highIn').value = cfg.high_target_c;
+  $('startSel').value = String(cfg.night_start_hour);
+  $('endSel').value = String(cfg.night_end_hour);
+  $('tzIn').value = cfg.timezone || S.zone;
+  $('fanIn').checked = !!cfg.fan_low;
+  setDirty(false);
+}
+
+function setDirty(dirty) {
+  S.dirty = dirty;
+  const c = readForm();
+  const err = dirty ? validate(c) : '';
+  setText('formError', err);
+  setText('formSummary', Number.isNaN(c.low_threshold_c) || Number.isNaN(c.high_target_c) ? '' : describeConfig(c));
+  $('saveBtn').disabled = !dirty || !!err;
+  $('resetBtn').disabled = !dirty;
+}
+
+$('settingsForm').addEventListener('input', () => setDirty(true));
+$('settingsForm').addEventListener('change', () => setDirty(true));
+$('resetBtn').addEventListener('click', () => fillForm(S.overview && S.overview.config));
+$('settingsForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const c = readForm();
+  const err = validate(c);
+  if (err) { setText('formError', err); return; }
+  $('saveBtn').disabled = true;
+  try {
+    await api('/api/nightwatch/config', { method: 'POST', body: JSON.stringify(c) });
+    S.dirty = false;
+    toast('Saved. The night watch is using the new settings.');
+    await refreshOverview();
+    renderChart(false);
+  } catch (e) {
+    setText('formError', e.message);
+    $('saveBtn').disabled = false;
+  }
+});
+
+function renderSwitch(cfg, w) {
+  const sw = $('watchSwitch');
+  sw.setAttribute('aria-checked', String(!!cfg.enabled));
+  const sub = !cfg.enabled ? 'Off: the heat pump is left alone overnight'
+    : (w && w.heating ? 'On: heating right now' : `On: watching ${hourLabel(cfg.night_start_hour)}–${hourLabel(cfg.night_end_hour)}`);
+  setText('switchSub', sub);
+  sw.disabled = !!(w && w.error) || S.switchBusy === true;
+}
+
+$('watchSwitch').addEventListener('click', async () => {
+  const cfg = S.overview && S.overview.config;
+  if (!cfg) return;
+  const next = !cfg.enabled;
+  if (!next && S.overview.watch && S.overview.watch.heating
+      && !window.confirm('The night watch is heating right now. Turning it off also switches the heat pump off. Turn it off?')) return;
+  S.switchBusy = true;
+  $('watchSwitch').disabled = true;
+  try {
+    await api('/api/nightwatch/config', { method: 'POST', body: JSON.stringify({ ...cfg, enabled: next }) });
+    toast(next ? 'Night watch on.' : 'Night watch off.');
+  } catch (e) {
+    toast(`Couldn't change the night watch: ${e.message}`, true);
+  } finally {
+    S.switchBusy = false;
+    await refreshOverview();
+  }
+});
+
+/* ---------------------------------------------------------------- device actions */
+
+async function deviceAction(btn, path, body, done) {
+  S.deviceBusy = true;
+  $('heatNowBtn').disabled = true;
+  $('offBtn').disabled = true;
+  try {
+    await api(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined });
+    toast(done);
+    setTimeout(refreshOverview, 4000);  // LG reports the new state after a short delay
+  } catch (e) {
+    toast(`The heat pump didn't accept that: ${e.message}`, true);
+  } finally {
+    S.deviceBusy = false;
+    await refreshOverview();
+  }
+}
+$('heatNowBtn').addEventListener('click', () => {
+  const cfg = (S.overview && S.overview.config) || {};
+  const target = num(cfg.high_target_c) || 22;
+  deviceAction($('heatNowBtn'), '/api/device/heat', { target_c: target, fan_low: true }, `Heating to ${fmtDeg(target)}°C with the fan on low.`);
+});
+$('offBtn').addEventListener('click', () => {
+  const cfg = (S.overview && S.overview.config) || {};
+  const w = (S.overview && S.overview.watch) || {};
+  const note = cfg.enabled && w.in_window ? ` The night watch will heat again if the room drops below ${fmtDeg(cfg.low_threshold_c)}°C.` : '';
+  deviceAction($('offBtn'), '/api/device/off', null, `Heat pump switched off.${note}`);
+});
+
+/* ---------------------------------------------------------------- polling */
+
+async function refreshAll() {
+  await refreshOverview();
+  await Promise.all([loadTemps(false), refreshSummary()]);
+}
+refreshAll();
+setInterval(refreshOverview, 30000);
+setInterval(() => { loadTemps(false); refreshSummary(); }, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAll(); });
 </script>
 </body>
 </html>

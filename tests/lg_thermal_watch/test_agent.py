@@ -127,3 +127,66 @@ class TestLGPC18SKAgentThrottle:
             raise AssertionError("expected ValueError for out-of-range target temperature")
 
         asyncio.run(run())
+
+
+class CountingController(ThinQAgentController):
+    """Controller that counts status reads."""
+
+    def __init__(self) -> None:
+        """Initialise over the stub API."""
+        super().__init__(StubApi(), device_id="dev")
+        self.status_reads = 0
+
+    async def get_device_status(self) -> dict[str, Any] | None:
+        """Count and return a status with a room temperature."""
+        self.status_reads += 1
+        return {"temperatureInUnits": [{"currentTemperature": 21.0, "targetTemperature": 22, "unit": "C"}]}
+
+
+class TestStatusCache:
+    def test_reads_share_one_call_within_ttl(self) -> None:
+        """Logger, watch and dashboard reads within the TTL share one LG call."""
+        controller = CountingController()
+        agent = LGPC18SKAgent(controller, status_ttl_s=60.0)
+
+        async def run() -> float | None:
+            await agent.get_device_status()
+            await agent.get_target_temperature()
+            return await agent.get_room_temperature()
+
+        assert asyncio.run(run()) == 21.0
+        assert controller.status_reads == 1
+
+    def test_commands_and_max_age_bypass_cache(self) -> None:
+        """A command invalidates the cache, and max_age_s=0 forces a fresh read."""
+        controller = CountingController()
+        agent = LGPC18SKAgent(controller, status_ttl_s=60.0)
+
+        async def run() -> None:
+            await agent.get_device_status()
+            await agent.turn_on()
+            await agent.get_device_status()
+            await agent.get_device_status(max_age_s=0)
+
+        asyncio.run(run())
+        assert controller.status_reads == 3
+
+
+class TestFailSafe:
+    def test_turn_off_is_never_throttled(self) -> None:
+        """Switching off still works when the throttle has refused everything else."""
+        agent, _mock = make_agent(max_commands_per_window=1, window_seconds=60.0)
+
+        async def run() -> None:
+            await agent.turn_on()
+            try:
+                await agent.turn_on()
+            except RuntimeError:
+                pass
+            else:
+                raise AssertionError("expected the second turn_on to be throttled")
+            assert agent.commands_available() == 0
+            await agent.turn_off()
+            await agent.set_hvac_mode("off")
+
+        asyncio.run(run())

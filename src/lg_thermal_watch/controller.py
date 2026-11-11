@@ -27,6 +27,57 @@ OPERATION_MODE_MAP: dict[str, str] = {
 }
 
 
+def describe_error(exc: BaseException) -> str:
+    """Return a one-line description of an error (ThinQ errors already carry their class name and LG code)."""
+    text = str(exc) or repr(exc)
+    name = type(exc).__name__
+    return text if text.startswith(name) else f"{name}: {text}"
+
+
+def extract_temperature(status: dict[str, Any] | None, key: str) -> float | None:
+    """Extract a temperature value (Celsius preferred) from a ThinQ status dict."""
+    status = status or {}
+    value: Any = None
+    units = status.get("temperatureInUnits")
+    entries: list[dict[str, Any]] = []
+    if isinstance(units, list):
+        entries = [unit for unit in units if isinstance(unit, dict)]
+    elif isinstance(units, dict):
+        entries = [units]
+    for entry in entries:
+        if str(entry.get("unit") or "").upper() == "C" and entry.get(key) is not None:
+            value = entry.get(key)
+            break
+    if value is None and isinstance(status.get("temperature"), dict):
+        value = status["temperature"].get(key)
+    try:
+        return float(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def is_powered_on(status: dict[str, Any] | None) -> bool | None:
+    """Return True/False from ``operation.airConOperationMode``, or None when the status does not say."""
+    mode = ((status or {}).get("operation") or {}).get("airConOperationMode")
+    if mode is None:
+        return None
+    return str(mode).upper() == "POWER_ON"
+
+
+def summarize_status(status: dict[str, Any] | None) -> dict[str, Any]:
+    """Flatten a raw ThinQ air-conditioner status into the handful of fields the watch and dashboard use."""
+    status = status or {}
+    return {
+        "room_temp_c": extract_temperature(status, "currentTemperature"),
+        "target_temp_c": extract_temperature(status, "targetTemperature"),
+        "power": (status.get("operation") or {}).get("airConOperationMode"),
+        "is_on": is_powered_on(status),
+        "job_mode": (status.get("airConJobMode") or {}).get("currentJobMode"),
+        "fan_speed": (status.get("airFlow") or {}).get("windStrength"),
+        "run_state": (status.get("runState") or {}).get("currentState"),
+    }
+
+
 class ThinQAgentController:
     """Agent-side control interface to the LG air conditioner via LG ThinQ Connect API."""
 
@@ -53,24 +104,7 @@ class ThinQAgentController:
     @staticmethod
     def _extract_temperature(status: dict[str, Any] | None, key: str) -> float | None:
         """Extract a temperature value (Celsius preferred) from a ThinQ status dict."""
-        status = status or {}
-        value: Any = None
-        units = status.get("temperatureInUnits")
-        entries: list[dict[str, Any]] = []
-        if isinstance(units, list):
-            entries = [unit for unit in units if isinstance(unit, dict)]
-        elif isinstance(units, dict):
-            entries = [units]
-        for entry in entries:
-            if str(entry.get("unit") or "").upper() == "C" and entry.get(key) is not None:
-                value = entry.get(key)
-                break
-        if value is None and isinstance(status.get("temperature"), dict):
-            value = status["temperature"].get(key)
-        try:
-            return float(value) if value is not None else None
-        except (TypeError, ValueError):
-            return None
+        return extract_temperature(status, key)
 
     async def get_room_temperature(self) -> float | None:
         """Read room temperature (Celsius)."""
@@ -90,12 +124,14 @@ class ThinQAgentController:
         """Post a control command (accepted by LG cloud)."""
         return cast("dict[str, Any] | None", await self.api.async_post_device_control(self.device_id, payload))
 
-    async def set_target_temperature(self, value_c: float) -> dict[str, Any] | None:
-        """Set target temperature (Celsius); LG requires mode context in the payload."""
+    async def set_target_temperature(self, value_c: float, *, job_mode: str | None = None) -> dict[str, Any] | None:
+        """Set target temperature (Celsius); LG requires job-mode context, read from the device unless given."""
         if not (self.temp_min_c <= value_c <= self.temp_max_c):
             raise ValueError(f"target temperature {value_c}C outside allowed [{self.temp_min_c}, {self.temp_max_c}]C")
-        status = await self.get_device_status() or {}
-        mode = ((status.get("airConJobMode") or {}).get("currentJobMode")) or "HEAT"
+        mode = job_mode
+        if mode is None:
+            status = await self.get_device_status() or {}
+            mode = ((status.get("airConJobMode") or {}).get("currentJobMode")) or "HEAT"
         payload = {
             "airConJobMode": {"currentJobMode": mode},
             "temperatureInUnits": {"targetTemperatureC": int(round(value_c)), "unit": "C"},

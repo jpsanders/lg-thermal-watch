@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from lg_thermal_watch.controller import ThinQAgentController
+from lg_thermal_watch.controller import ThinQAgentController, describe_error, is_powered_on, summarize_status
 
 
 class MockThinQApi:
@@ -110,3 +110,40 @@ class TestThinQAgentController:
             raise AssertionError("expected ValueError for out-of-range target temperature")
 
         asyncio.run(run())
+
+    def test_set_target_temperature_with_explicit_job_mode_skips_status_read(self) -> None:
+        """An explicit job mode is sent as-is, avoiding a racy status read right after a mode change."""
+        api = MockThinQApi()
+        api.status["airConJobMode"] = {"currentJobMode": "COOL"}
+        controller = ThinQAgentController(api, device_id="dev")
+        asyncio.run(controller.set_target_temperature(22.0, job_mode="HEAT"))
+        assert api.controlled_payloads[-1]["airConJobMode"] == {"currentJobMode": "HEAT"}
+
+
+def test_summarize_status_and_power() -> None:
+    """The live PC18SK status flattens into the fields the dashboard and watch use."""
+    status = MockThinQApi().status
+    summary = summarize_status(status)
+    assert summary == {
+        "room_temp_c": 22.5,
+        "target_temp_c": 26.0,
+        "power": "POWER_OFF",
+        "is_on": False,
+        "job_mode": "HEAT",
+        "fan_speed": "HIGH",
+        "run_state": None,
+    }
+    assert is_powered_on({"operation": {"airConOperationMode": "POWER_ON"}}) is True
+    assert is_powered_on({}) is None
+    assert summarize_status(None)["room_temp_c"] is None
+
+
+def test_describe_error_does_not_repeat_class_name() -> None:
+    """Errors whose message already names the class are not prefixed twice."""
+
+    class ThinQAPIException(Exception):
+        def __str__(self) -> str:
+            return "ThinQAPIException: COMMAND_NOT_SUPPORTED_IN_POWER_OFF (2304) - off"
+
+    assert describe_error(ThinQAPIException()) == "ThinQAPIException: COMMAND_NOT_SUPPORTED_IN_POWER_OFF (2304) - off"
+    assert describe_error(ValueError("bad")) == "ValueError: bad"
