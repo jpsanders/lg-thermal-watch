@@ -64,7 +64,7 @@ Environment variables consumed by the controller:
 | `LG_THERMAL_WATCH_DB` | SQLite path for readings (default `/tmp/opencode/lg_thinq_room_temps.db`) |
 | `LG_THERMAL_WATCH_NIGHTWATCH_CONFIG` | Watch settings (default `/tmp/opencode/lg_thermal_watch_nightwatch.json`) |
 | `LG_THERMAL_WATCH_NIGHTWATCH_STATE` | Watch runtime state (default: a `.state.json` file next to the settings) |
-| `LG_THERMAL_WATCH_TIMEZONE` | Fallback IANA zone for the night window when the config omits one (e.g. `Pacific/Auckland`) |
+| `LG_THERMAL_WATCH_TIMEZONE` | Fallback IANA zone for the night window when the config omits one (e.g. `Europe/Lisbon`) |
 | `LG_THERMAL_WATCH_HOST` | Bind host (default `127.0.0.1`; `0.0.0.0` exposes it on LAN / Tailscale) |
 | `LG_THERMAL_WATCH_PORT` | Bind port (default `8000`) |
 
