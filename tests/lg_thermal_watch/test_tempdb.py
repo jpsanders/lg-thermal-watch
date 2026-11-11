@@ -6,26 +6,38 @@ import asyncio
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 from lg_thermal_watch.tempdb import RoomTempLogger, normalize_ts, utc_iso
 
 
 class MockAgent:
-    """Mock of the agent temperature source."""
+    """Mock of the agent device-status source."""
 
     def __init__(self, temps: list[float], fail_first: int = 0) -> None:
         """Initialise the scripted readings."""
         self.temps = list(temps)
         self.fail_first = fail_first
 
-    async def get_room_temperature(self) -> float | None:
-        """Return the next scripted temperature (after any scripted failures)."""
+    async def get_device_status(self, *, max_age_s: float | None = None) -> dict[str, Any] | None:
+        """Return the next scripted reading as a ThinQ-shaped status (after any scripted failures)."""
         if self.fail_first > 0:
             self.fail_first -= 1
             raise ConnectionError("LG cloud unreachable")
         if not self.temps:
             return None
-        return self.temps.pop(0)
+        return {
+            "operation": {"airConOperationMode": "POWER_OFF"},
+            "temperatureInUnits": [{"unit": "C", "currentTemperature": self.temps.pop(0)}],
+        }
+
+
+class _StatusOnlyAgent:
+    """Mock agent that reports a powered-on status without any temperature."""
+
+    async def get_device_status(self, *, max_age_s: float | None = None) -> dict[str, Any] | None:
+        """Return a powered-on status with no temperature units."""
+        return {"operation": {"airConOperationMode": "POWER_ON"}}
 
 
 async def run_briefly(logger: RoomTempLogger, seconds: float = 0.25) -> None:
@@ -61,6 +73,34 @@ class TestRoomTempLogger:
         asyncio.run(run_briefly(logger, 0.3))
         assert logger.get_readings_count() == 2
         assert logger.last_error is None
+
+    def test_status_observers_receive_every_status(self, tmp_path: Path) -> None:
+        """Observers get (ts, status) per read and a broken observer never stops the logger."""
+        logger = make_logger(tmp_path, MockAgent([21.0, 22.0]))
+        seen: list[tuple[str, dict[str, Any]]] = []
+
+        def good(ts: str, status: dict[str, Any]) -> None:
+            seen.append((ts, status))
+
+        def broken(ts: str, status: dict[str, Any]) -> None:
+            raise RuntimeError("observer exploded")
+
+        logger.status_observers.extend([good, broken])
+        asyncio.run(run_briefly(logger, 0.1))
+        assert len(seen) == 2
+        assert all(ts.endswith("+00:00") for ts, _ in seen)
+        assert seen[0][1]["temperatureInUnits"][0]["currentTemperature"] == 21.0
+
+    def test_status_without_temperature_still_notifies_observers(self, tmp_path: Path) -> None:
+        """A status without a temperature stores no reading but still reaches the observers."""
+        logger = RoomTempLogger(
+            _StatusOnlyAgent(), db_path=str(tmp_path / "temps.db"), interval_s=0.02  # type: ignore[arg-type]
+        )
+        seen: list[dict[str, Any]] = []
+        logger.status_observers.append(lambda ts, status: seen.append(status))
+        asyncio.run(run_briefly(logger, 0.05))
+        assert logger.get_readings_count() == 0
+        assert seen and seen[0]["operation"]["airConOperationMode"] == "POWER_ON"
 
     def test_legacy_naive_timestamps_are_migrated(self, tmp_path: Path) -> None:
         """Rows written by older versions in naive local time are converted to UTC on start-up."""

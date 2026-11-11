@@ -403,6 +403,30 @@ td { font-variant-numeric: tabular-nums; }
       </div>
     </section>
 
+    <section class="card" aria-labelledby="usageTitle">
+      <div class="card-head">
+        <div>
+          <h2 id="usageTitle">Usage &amp; energy</h2>
+          <div class="sub" id="usageSub">Estimated from on/off runs</div>
+        </div>
+        <span class="sub" id="usageZoneNote">Times in Europe/Lisbon</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="label">Right now</div><div class="value" id="usageNow">--</div><div class="note" id="usageNowNote">&nbsp;</div></div>
+        <div class="stat"><div class="label">Last run</div><div class="value" id="usageLast">--</div><div class="note" id="usageLastNote">&nbsp;</div></div>
+        <div class="stat"><div class="label">Time on this month</div><div class="value" id="usageHours">--</div><div class="note" id="usageHoursNote">&nbsp;</div></div>
+        <div class="stat"><div class="label">Energy this month</div><div class="value" id="usageKwh">--</div><div class="note" id="usageKwhNote">&nbsp;</div></div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="usageChart" role="img" aria-label="Estimated energy use per month"></canvas>
+        <div class="chart-empty" id="usageEmpty" hidden></div>
+      </div>
+      <div class="activity">
+        <h3>Recent runs</h3>
+        <ul class="events" id="runList"></ul>
+      </div>
+    </section>
+
     <div class="cols">
       <section class="card" aria-labelledby="settingsTitle">
         <div class="card-head"><h2 id="settingsTitle">Night watch settings</h2></div>
@@ -489,8 +513,9 @@ function icon(name) {
 }
 
 const S = {
-  overview: null, overviewError: null, temps: null, summary: null, summaryWin: null,
-  range: '24h', zone: 'Europe/Lisbon', chart: null, chartZone: null, dirty: false, tableOpen: false,
+  overview: null, overviewError: null, temps: null, summary: null, summaryWin: null, runtime: null,
+  range: '24h', zone: 'Europe/Lisbon', chart: null, chartZone: null, usageChart: null,
+  dirty: false, tableOpen: false,
 };
 const RANGE_HOURS = { '24h': 24, '7d': 168, '30d': 720 };
 const RANGE_TEXT = { '24h': 'the last 24 hours', '7d': 'the last 7 days', '30d': 'the last 30 days' };
@@ -585,10 +610,12 @@ $('themeBtn').addEventListener('click', () => {
   try { localStorage.setItem(THEME_KEY, next); } catch (_) { /* not persisted */ }
   renderThemeButton();
   renderChart(true);
+  if (S.runtime) renderUsageChart();
 });
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
   renderThemeButton();
   renderChart(true);
+  if (S.runtime) renderUsageChart();
 });
 renderThemeButton();
 
@@ -1392,15 +1419,165 @@ $('offBtn').addEventListener('click', () => {
   deviceAction($('offBtn'), '/api/device/off', null, `Heat pump switched off.${note}`);
 });
 
+/* ---------------------------------------------------------------- usage & energy */
+
+function runSource(run) { return run && run.source === 'watch' ? 'night watch' : 'manual'; }
+
+function renderRuntime() {
+  const r = S.runtime;
+  if (!r) return;
+  const cur = r.current;
+  const last = (r.recent && r.recent[0]) || null;
+  const month = (r.monthly && r.monthly[r.monthly.length - 1]) || null;
+  const kw = num(r.avg_power_kw);
+  setText('usageSub', kw !== null ? `Estimated at ${fmtDeg(kw)} kW average draw while running` : 'Estimated from on/off runs');
+  setText('usageZoneNote', `Times in ${r.timezone || S.zone}`);
+  if (cur) {
+    setText('usageNow', 'On');
+    setText('usageNowNote', `for ${fmtDuration((cur.duration_s || 0) * 1000)} · ${runSource(cur)}`);
+  } else {
+    setText('usageNow', 'Off');
+    setText('usageNowNote', 'The heat pump is off');
+  }
+  if (last) {
+    setText('usageLast', fmtWhen(last.started_at));
+    setText('usageLastNote', `${fmtDuration((last.duration_s || 0) * 1000)} · ${runSource(last)}`);
+  } else {
+    setText('usageLast', '--');
+    setText('usageLastNote', 'No runs yet');
+  }
+  if (month) {
+    setText('usageHours', `${month.hours} h`);
+    setText('usageHoursNote', `${month.sessions} run${month.sessions === 1 ? '' : 's'} in ${month.label}`);
+    setText('usageKwh', `${month.kwh} kWh`);
+    setText('usageKwhNote', kw !== null ? `≈ ${fmtDeg(kw)} kW while running` : 'Estimate');
+  }
+}
+
+function renderRunList() {
+  const list = $('runList');
+  list.replaceChildren();
+  const runs = ((S.runtime && S.runtime.recent) || []).slice(0, 8);
+  if (!runs.length) {
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    span.className = 'empty';
+    span.textContent = 'No runs recorded yet — tracking starts now.';
+    li.appendChild(span);
+    li.style.gridTemplateColumns = '1fr';
+    list.appendChild(li);
+    return;
+  }
+  for (const run of runs) {
+    const li = document.createElement('li');
+    li.dataset.kind = run.source === 'watch' ? 'heat_start' : 'manual';
+    const time = document.createElement('time');
+    time.dateTime = run.started_at;
+    time.textContent = fmtWhen(run.started_at);
+    const ic = document.createElement('span');
+    ic.innerHTML = icon(run.source === 'watch' ? 'flame' : 'sun');
+    const text = document.createElement('span');
+    text.textContent = `${fmtDuration((run.duration_s || 0) * 1000)} running · ${runSource(run)}`;
+    li.append(time, ic, text);
+    list.appendChild(li);
+  }
+}
+
+function renderUsageChart() {
+  const r = S.runtime;
+  const months = (r && r.monthly) || [];
+  const anyRuns = months.some((m) => m.sessions > 0);
+  $('usageEmpty').hidden = anyRuns;
+  if (!anyRuns) $('usageEmpty').textContent = 'No runs recorded yet — tracking starts now.';
+  const font = cssVar('--font') || 'system-ui, sans-serif';
+  if (S.usageChart) { S.usageChart.destroy(); S.usageChart = null; }
+  S.usageChart = new Chart($('usageChart'), {
+    type: 'bar',
+    data: {
+      labels: months.map((m) => m.label),
+      datasets: [{
+        label: 'Estimated energy',
+        data: months.map((m) => m.kwh),
+        backgroundColor: cssVar('--heat'),
+        borderRadius: 6,
+        maxBarThickness: 46,
+        categoryPercentage: 0.7,
+        barPercentage: 0.9,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      layout: { padding: { top: 8, right: 10 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          displayColors: false,
+          backgroundColor: cssVar('--tooltip'),
+          titleColor: cssVar('--text-1'),
+          bodyColor: cssVar('--text-2'),
+          borderColor: cssVar('--border'),
+          borderWidth: 1,
+          padding: 10,
+          cornerRadius: 10,
+          caretSize: 0,
+          titleFont: { family: font, size: 15, weight: '600' },
+          bodyFont: { family: font, size: 12 },
+          callbacks: {
+            title: (items) => (items.length ? items[0].label : ''),
+            label: (item) => {
+              const m = months[item.dataIndex];
+              const kw = num(r && r.avg_power_kw);
+              const est = kw !== null ? ` · ≈ ${fmtDeg(kw)} kW while on` : '';
+              return `${m.hours} h on${est}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          border: { color: cssVar('--axis') },
+          ticks: { color: cssVar('--muted'), font: { family: font, size: 11 } },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: cssVar('--grid'), drawTicks: false },
+          border: { display: false },
+          ticks: {
+            color: cssVar('--muted'), padding: 8, font: { family: font, size: 11 },
+            callback: (v) => `${v} kWh`,
+          },
+        },
+      },
+    },
+  });
+  $('usageChart').setAttribute('aria-label', anyRuns
+    ? `Estimated energy use per month: ${months.map((m) => `${m.label} ${m.kwh} kWh`).join(', ')}.`
+    : 'No energy use recorded yet. Runs are tracked from now on.');
+}
+
+async function refreshRuntime() {
+  try {
+    S.runtime = await api('/api/runtime');
+    renderRuntime();
+    renderRunList();
+    renderUsageChart();
+  } catch (e) {
+    // Keep the last data on screen; connectivity problems already surface in the banner.
+  }
+}
+
 /* ---------------------------------------------------------------- polling */
 
 async function refreshAll() {
   await refreshOverview();
-  await Promise.all([loadTemps(false), refreshSummary()]);
+  await Promise.all([loadTemps(false), refreshSummary(), refreshRuntime()]);
 }
 refreshAll();
 setInterval(refreshOverview, 30000);
-setInterval(() => { loadTemps(false); refreshSummary(); }, 60000);
+setInterval(() => { loadTemps(false); refreshSummary(); refreshRuntime(); }, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAll(); });
 </script>
 </body>

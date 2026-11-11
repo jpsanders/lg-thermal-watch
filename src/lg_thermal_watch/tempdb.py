@@ -10,11 +10,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import sqlite3
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from lg_thermal_watch.controller import describe_error
+from lg_thermal_watch.controller import describe_error, extract_temperature
 
 if TYPE_CHECKING:
     from lg_thermal_watch.agent import LGPC18SKAgent
@@ -57,6 +58,9 @@ class RoomTempLogger:
         self._task: asyncio.Task[Any] | None = None
         self.last_reading_at: datetime | None = None
         self.last_error: str | None = None
+        # Callbacks (ts_iso, status) notified after every successful device-status read; the runtime
+        # tracker uses these to follow power changes without any extra LG calls.
+        self.status_observers: list[Callable[[str, dict[str, Any]], None]] = []
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
@@ -122,14 +126,22 @@ class RoomTempLogger:
             conn.close()
 
     async def _read_and_store(self) -> None:
-        """Read one room temperature and store it."""
+        """Read one device status, store the room temperature and notify status observers."""
         if self.agent is None:
             raise RuntimeError("no device agent configured")
-        temp = await self.agent.get_room_temperature()
-        if temp is None:
+        status = await self.agent.get_device_status()
+        if status is None:
             return
-        self.add_reading(float(temp))
-        self.last_reading_at = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
+        temp = extract_temperature(status, "currentTemperature")
+        if temp is not None:
+            self.add_reading(float(temp), at=now)
+            self.last_reading_at = now
+        for observer in self.status_observers:
+            try:
+                observer(utc_iso(now), status)
+            except Exception as exc:  # a broken observer must never stop the logger
+                _LOGGER.warning("Status observer failed: %s", describe_error(exc))
 
     async def _run(self) -> None:
         """Logger event loop; a failed read is logged and retried on the next interval."""

@@ -26,6 +26,8 @@ and close the loop with overnight gentle heating plus continuous room-temperatur
 - **FastAPI dashboard** — live room temperature against the night-watch thresholds, what the
   watch is doing and why, a temperature history chart (night windows, heating periods and
   thresholds marked, with a table view), night-watch settings, and manual heat/off controls.
+- **Runtime tracking** — every on/off run is recorded with its duration and source (night watch
+  or manual), and the dashboard shows recent runs plus an estimated monthly energy chart.
 
 ## How it works
 
@@ -65,6 +67,7 @@ Environment variables consumed by the controller:
 | `LG_THERMAL_WATCH_NIGHTWATCH_CONFIG` | Watch settings (default `/tmp/opencode/lg_thermal_watch_nightwatch.json`) |
 | `LG_THERMAL_WATCH_NIGHTWATCH_STATE` | Watch runtime state (default: a `.state.json` file next to the settings) |
 | `LG_THERMAL_WATCH_TIMEZONE` | Fallback IANA zone for the night window when the config omits one (e.g. `Europe/Lisbon`) |
+| `LG_THERMAL_WATCH_AVG_POWER_KW` | Assumed average electrical draw (kW) while the unit runs, for the energy estimate (default `1.0`) |
 | `LG_THERMAL_WATCH_HOST` | Bind host (default `127.0.0.1`; `0.0.0.0` exposes it on LAN / Tailscale) |
 | `LG_THERMAL_WATCH_PORT` | Bind port (default `8000`) |
 
@@ -129,6 +132,7 @@ tailscale ip
 | GET | `/api/status` | Raw device status from LG ThinQ |
 | GET | `/api/temps` | Readings, stats and night watch events for a window, see below |
 | GET | `/api/nightwatch` | Night watch live state (window, heating, last check, last action, errors) |
+| GET | `/api/runtime` | On/off sessions, recent runs and estimated monthly energy use (`?months=1-24`, default 6) |
 | GET | `/api/nightwatch/config` | Night watch settings |
 | POST | `/api/nightwatch/config` | Update and persist settings (body: `NightWatchConfig`); starts/stops |
 | POST | `/api/nightwatch/start` | Enable and start the night watch |
@@ -167,6 +171,26 @@ Behaviour worth knowing:
 - If someone switches the unit off mid-cycle, the watch lets go and waits for the low threshold again.
 - A failed check (network, LG cloud) is logged and retried on the next minute; it never stops the watch.
 - Switching off is never throttled.
+
+## Runtime tracking & energy estimates
+
+The runtime tracker follows the heat pump's power state from the same device-status polls the
+temperature logger already makes, so it costs no extra LG calls and no state of its own to keep
+fresh. When the unit powers on it opens a session (labelled `watch` when the night watch owns the
+unit, otherwise `manual`); the next powered-off reading closes it with its duration. Sessions live
+in the `runtime_sessions` table next to the temperature readings, so an open session survives a
+restart.
+
+Only observed time is credited. If the service was down (or polling stalled) for longer than ten
+minutes between two observations, the gap is not counted as running time: the open session ends at
+its last observed moment and the next powered-on reading starts a fresh one. Within normal polling
+the end of a session is the powered-off reading itself.
+
+`GET /api/runtime` returns the open session, the recent completed runs, and a per-calendar-month
+summary (`hours` and an estimated `kwh`) bucketed in the watch timezone. The energy figure is an
+**estimate**: `hours × LG_THERMAL_WATCH_AVG_POWER_KW` (default 1.0 kW, the PC18SK's approximate
+rated heating input). It shows how long the unit ran, not what the meter read — LG's API does not
+expose per-session consumption.
 
 ## Development
 

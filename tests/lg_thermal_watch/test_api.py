@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Generator
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,7 @@ from fastapi.testclient import TestClient
 from lg_thermal_watch import api
 from lg_thermal_watch.agent import LGPC18SKAgent
 from lg_thermal_watch.nightwatch import LGPC18SKNightWatch
+from lg_thermal_watch.runtime import RuntimeTracker
 from lg_thermal_watch.tempdb import RoomTempLogger
 
 VALID_CONFIG: dict[str, Any] = {
@@ -106,6 +108,8 @@ def client(
     monkeypatch.setattr(api, "_temp_logger", logger)
     watch = LGPC18SKNightWatch(agent, event_sink=logger.record_event, state_path=paths / "state.json")
     monkeypatch.setattr(api, "_night_watch", watch)
+    tracker = RuntimeTracker(db_path=str(paths / "runtime.db"), source_fn=api._runtime_source, gap_split_s=3600.0)
+    monkeypatch.setattr(api, "_runtime_tracker", tracker)
     with TestClient(api.create_app()) as test_client:
         yield test_client
 
@@ -182,6 +186,44 @@ def test_timezone_env_default(client: TestClient, paths: Path, monkeypatch: pyte
     assert json.loads((paths / "nightwatch.json").read_text())["timezone"] == "Pacific/Auckland"
     response = client.post("/api/nightwatch/config", json={**no_tz, "timezone": "Europe/Lisbon"})
     assert response.json()["timezone"] == "Europe/Lisbon"
+
+
+def test_runtime_endpoint_tracks_sessions(client: TestClient) -> None:
+    """GET /api/runtime reports the open session, recent runs and monthly estimates."""
+    tracker = api.get_runtime_tracker()
+    logger = api._temp_logger
+    assert logger is not None and tracker.observe in logger.status_observers  # wired to the status polls
+    tracker.observe("2026-11-11T10:00:00+00:00", {"operation": {"airConOperationMode": "POWER_ON"}})
+    body = client.get("/api/runtime").json()
+    assert body["current"]["started_at"] == "2026-11-11T10:00:00+00:00"
+    assert body["current"]["source"] == "manual"
+    assert body["estimate"] is True
+    assert body["avg_power_kw"] == 1.0
+    this_month = datetime.now(timezone.utc).strftime("%Y-%m")
+    assert body["monthly"] and body["monthly"][-1]["month"] == this_month
+    tracker.observe("2026-11-11T10:20:00+00:00", {"operation": {"airConOperationMode": "POWER_OFF"}})
+    body = client.get("/api/runtime").json()
+    assert body["current"] is None
+    assert body["recent"][0]["duration_s"] == pytest.approx(1200.0)
+    assert body["monthly"][-1]["hours"] == 0.33
+    assert body["monthly"][-1]["kwh"] == 0.33
+
+
+def test_runtime_endpoint_labels_watch_source(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A run that starts while the night watch owns the unit is labelled 'watch'."""
+
+    class HeatingWatch:
+        is_heating = True
+
+        async def stop(self, release: bool = True) -> None:  # noqa: ARG002 - lifespan teardown only
+            """No-op: the stub is never started."""
+            return None
+
+    tracker = api.get_runtime_tracker()
+    monkeypatch.setattr(api, "_night_watch", HeatingWatch())
+    tracker.observe("2026-11-11T10:00:00+00:00", {"operation": {"airConOperationMode": "POWER_ON"}})
+    body = client.get("/api/runtime").json()
+    assert body["current"]["source"] == "watch"
 
 
 def test_nightwatch_config_enable_starts_watch(client: TestClient) -> None:

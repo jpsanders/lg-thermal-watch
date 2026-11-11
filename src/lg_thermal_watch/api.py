@@ -27,6 +27,7 @@ from lg_thermal_watch.nightwatch import (
     is_valid_timezone,
     system_timezone_name,
 )
+from lg_thermal_watch.runtime import RuntimeTracker
 from lg_thermal_watch.tempdb import RoomTempLogger, normalize_ts
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,10 +42,28 @@ STATIC_DIR = Path(__file__).parent / "static"
 TIMELINE_HOURS = {"24h": 24, "7d": 168, "30d": 720}
 TIMELINE_BUCKET_S = {"24h": 0, "7d": 300, "30d": 1800}
 
+
+def _env_float(name: str, default: float) -> float:
+    """Read a float from the environment, falling back to ``default`` when unset or non-numeric."""
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        _LOGGER.warning("Ignoring non-numeric %s=%r", name, raw)
+        return default
+
+
+# Average electrical draw (kW) assumed while the unit runs; the PC18SK is a 5.0 kW-class inverter
+# with roughly 0.8-1.1 kW rated heating input, so 1.0 kW is a fair default for an estimate.
+AVG_POWER_KW = _env_float("LG_THERMAL_WATCH_AVG_POWER_KW", 1.0)
+
 _agent: LGPC18SKAgent | None = None
 _agent_error: str | None = None
 _temp_logger: RoomTempLogger | None = None
 _night_watch: LGPC18SKNightWatch | None = None
+_runtime_tracker: RuntimeTracker | None = None
 _config: NightWatchConfig | None = None
 _session: ClientSession | None = None
 
@@ -153,6 +172,32 @@ def get_night_watch() -> LGPC18SKNightWatch:
     return _night_watch
 
 
+def _runtime_source() -> str:
+    """Label a run's source: the night watch when it owns the unit, otherwise manual use."""
+    watch = _night_watch
+    if watch is not None and watch.is_heating:
+        return "watch"
+    return "manual"
+
+
+def _watch_zone() -> str:
+    """Return the IANA zone the night watch (and therefore the dashboard) evaluates time in."""
+    config = get_config()
+    return config.timezone or system_timezone_name() or "UTC"
+
+
+def get_runtime_tracker() -> RuntimeTracker:
+    """Return the shared runtime tracker, wiring it to the status polls on first use."""
+    global _runtime_tracker
+    if _runtime_tracker is None:
+        _runtime_tracker = RuntimeTracker(db_path=DB_PATH, source_fn=_runtime_source)
+    tracker = _runtime_tracker
+    logger = get_temp_logger()
+    if tracker.observe not in logger.status_observers:
+        logger.status_observers.append(tracker.observe)
+    return tracker
+
+
 def get_config() -> NightWatchConfig:
     """Return the night watch config, loading it from disk on first use."""
     global _config
@@ -229,6 +274,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     global _session
     _session = ClientSession(timeout=ClientTimeout(total=30))
     logger = get_temp_logger()
+    get_runtime_tracker()  # follows power changes via the logger's status polls; no extra LG calls
     if _try_agent() is None:
         _LOGGER.error("%s; serving history only (no logging, no night watch)", _agent_error)
     else:
@@ -405,6 +451,21 @@ def create_app() -> FastAPI:
         _save_config(get_config().model_copy(update={"enabled": False}))
         await _stop_watch(watch)
         return {"stopped": True}
+
+    @app.get("/api/runtime")
+    async def runtime_state(months: int = Query(default=6, ge=1, le=24)) -> dict[str, Any]:
+        """Return on/off sessions and the estimated monthly energy use."""
+        tracker = get_runtime_tracker()
+        zone = _watch_zone()
+        return {
+            "now": _iso(datetime.now(timezone.utc)),
+            "timezone": zone,
+            "avg_power_kw": AVG_POWER_KW,
+            "estimate": True,
+            "current": tracker.current_session(),
+            "recent": tracker.recent_sessions(10),
+            "monthly": tracker.monthly_usage(months=months, avg_power_kw=AVG_POWER_KW, tz_name=zone),
+        }
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR), check_dir=False), name="static")
 
