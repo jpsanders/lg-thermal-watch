@@ -5,83 +5,106 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Thermal Watch</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8z' fill='%232a78d6'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 14.5c2.6 0 4.3-1.8 4.3-4.2 0-2.9-2.4-4.1-2.9-7.3C7.3 4.6 5.8 6.4 5.9 8.6c-.7-.4-1.2-1.2-1.3-2.1C3.9 7.6 3.7 8.7 3.7 10c0 2.6 1.8 4.5 4.3 4.5z' fill='%23c24e0a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
 <style>
+/* Palette: cream surfaces, ink-black sidebar/text, burnt-orange accent.
+   The data layer (charts, scale, events) reads these variables at runtime. */
 :root {
   color-scheme: light;
-  --page: #f9f9f7;
-  --surface: #fcfcfb;
-  --surface-2: #f1f0ec;
-  --text-1: #0b0b0b;
-  --text-2: #52514e;
-  --muted: #74726c;
-  --grid: #e1e0d9;
-  --axis: #c3c2b7;
-  --border: rgba(11, 11, 11, 0.10);
-  --series: #2a78d6;
-  --series-wash: rgba(42, 120, 214, 0.16);
-  --heat: #eb6834;
-  --heat-wash: rgba(235, 104, 52, 0.14);
-  --night-wash: rgba(11, 11, 11, 0.05);
-  --accent: #256abf;
-  --on-accent: #ffffff;
-  --good: #0ca30c;
-  --critical: #d03b3b;
-  --shadow: 0 1px 2px rgba(11, 11, 11, 0.04), 0 6px 24px rgba(11, 11, 11, 0.05);
-  --tooltip: #ffffff;
+  --page: #f6f1e8;
+  --surface: #fffdf9;
+  --surface-2: #f0e9db;
+  --text-1: #1c160d;
+  --text-2: #5f574a;
+  --muted: #7d7462;
+  --grid: #e8e0d1;
+  --axis: #d0c6b3;
+  --border: rgba(28, 22, 13, 0.13);
+  --series: #1c160d;
+  --series-wash: rgba(28, 22, 13, 0.10);
+  --heat: #c24e0a;
+  --heat-wash: rgba(194, 78, 10, 0.15);
+  --night-wash: rgba(28, 22, 13, 0.06);
+  --accent: #c24e0a;
+  --on-accent: #fffdf9;
+  --good: #3e7c26;
+  --critical: #bf3b2b;
+  --sidebar: #191410;
+  --sidebar-2: #262019;
+  --sidebar-text: #eae3d5;
+  --sidebar-muted: #968d7d;
+  --shadow: 0 1px 2px rgba(28, 22, 13, 0.05), 0 8px 28px rgba(28, 22, 13, 0.06);
+  --tooltip: #fffdf9;
   --radius: 16px;
   --font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
-    --page: #0d0d0d;
-    --surface: #1a1a19;
-    --surface-2: #242422;
-    --text-1: #f0efec;
-    --text-2: #c3c2b7;
-    --muted: #918f88;
-    --grid: #2c2c2a;
-    --axis: #383835;
-    --border: rgba(255, 255, 255, 0.10);
-    --series: #3987e5;
-    --series-wash: rgba(57, 135, 229, 0.24);
-    --heat: #d95926;
-    --heat-wash: rgba(217, 89, 38, 0.22);
-    --night-wash: rgba(255, 255, 255, 0.05);
+    --page: #16110b;
+    --surface: #201a13;
+    --surface-2: #2b2419;
+    --text-1: #f4edde;
+    --text-2: #c9c0af;
+    --muted: #998f7d;
+    --grid: #322a1f;
+    --axis: #42392b;
+    --border: rgba(244, 237, 222, 0.13);
+    --series: #f4edde;
+    --series-wash: rgba(244, 237, 222, 0.13);
+    --heat: #e0763b;
+    --heat-wash: rgba(224, 118, 59, 0.22);
+    --night-wash: rgba(244, 237, 222, 0.06);
+    --accent: #e0763b;
+    --on-accent: #16110b;
+    --good: #93c46a;
+    --critical: #f0917f;
+    --sidebar: #0f0b07;
+    --sidebar-2: #1c150d;
+    --sidebar-text: #eae3d5;
+    --sidebar-muted: #968d7d;
     --shadow: none;
-    --tooltip: #242422;
+    --tooltip: #2b2419;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: #0d0d0d;
-  --surface: #1a1a19;
-  --surface-2: #242422;
-  --text-1: #f0efec;
-  --text-2: #c3c2b7;
-  --muted: #918f88;
-  --grid: #2c2c2a;
-  --axis: #383835;
-  --border: rgba(255, 255, 255, 0.10);
-  --series: #3987e5;
-  --series-wash: rgba(57, 135, 229, 0.24);
-  --heat: #d95926;
-  --heat-wash: rgba(217, 89, 38, 0.22);
-  --night-wash: rgba(255, 255, 255, 0.05);
+  --page: #16110b;
+  --surface: #201a13;
+  --surface-2: #2b2419;
+  --text-1: #f4edde;
+  --text-2: #c9c0af;
+  --muted: #998f7d;
+  --grid: #322a1f;
+  --axis: #42392b;
+  --border: rgba(244, 237, 222, 0.13);
+  --series: #f4edde;
+  --series-wash: rgba(244, 237, 222, 0.13);
+  --heat: #e0763b;
+  --heat-wash: rgba(224, 118, 59, 0.22);
+  --night-wash: rgba(244, 237, 222, 0.06);
+  --accent: #e0763b;
+  --on-accent: #16110b;
+  --good: #93c46a;
+  --critical: #f0917f;
+  --sidebar: #0f0b07;
+  --sidebar-2: #1c150d;
+  --sidebar-text: #eae3d5;
+  --sidebar-muted: #968d7d;
   --shadow: none;
-  --tooltip: #242422;
+  --tooltip: #2b2419;
 }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html { -webkit-text-size-adjust: 100%; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
   background: var(--page);
@@ -90,30 +113,95 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 button, input, select { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--series); outline-offset: 2px; }
-.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 svg.icon { width: 16px; height: 16px; flex: none; }
+#overview, #history, #usage, #settings, #device { scroll-margin-top: 84px; }
+.skip-link {
+  position: fixed; top: -52px; left: 16px; z-index: 80; padding: 10px 14px; border-radius: 10px;
+  background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 600;
+  text-decoration: none; transition: top .15s;
+}
+.skip-link:focus-visible { top: 12px; }
 
-/* Header */
-.top { border-bottom: 1px solid var(--border); background: var(--surface); }
-.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 60px; }
-.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-.brand h1 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
-.brand span { color: var(--text-2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.top-right { display: flex; align-items: center; gap: 12px; }
-.conn { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 13px; white-space: nowrap; }
+/* Shell: TailAdmin-style sidebar + sticky topbar. Tailwind browser CDN supplies
+   the utility styling inside these blocks; the mechanics live here so the drawer
+   works even if the CDN cannot be reached. */
+.app { min-height: 100dvh; display: flex; flex-direction: column; }
+@media (min-width: 1024px) { .app { margin-left: 264px; } }
+.sidebar {
+  position: fixed; inset-block: 0; left: 0; z-index: 50; width: 264px;
+  display: flex; flex-direction: column; background: var(--sidebar); color: var(--sidebar-text);
+  transform: translateX(-100%); transition: transform .22s ease;
+}
+@media (min-width: 1024px) { .sidebar { transform: none; } }
+body.sidebar-open .sidebar { transform: none; box-shadow: 0 24px 64px rgba(10, 6, 2, 0.45); }
+@media (max-width: 1023.98px) { body.sidebar-open { overflow: hidden; } }
+.backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(12, 8, 3, 0.55); }
+.topbar { position: sticky; top: 0; z-index: 30; background: var(--page); border-bottom: 1px solid var(--border); }
+@supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+  .topbar {
+    background: color-mix(in srgb, var(--page) 86%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+.page-title { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.25; }
+.page-sub { margin: 0; font-size: 12.5px; color: var(--text-2); }
+.brand-name { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
+.brand-sub { display: block; font-size: 12px; color: var(--sidebar-muted); }
+.brand-mark {
+  display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px;
+  background: var(--heat); color: var(--on-accent); flex: none;
+}
+.sidebar-close {
+  display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10); background: transparent; color: var(--sidebar-text);
+  cursor: pointer; flex: none;
+}
+.sidebar-close:hover { background: var(--sidebar-2); }
+@media (min-width: 1024px) { .sidebar-close { display: none; } }
+.nav-label { margin: 16px 10px 6px; font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--sidebar-muted); }
+.nav-link {
+  position: relative; display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: 500; color: var(--sidebar-text); text-decoration: none;
+}
+.nav-link + .nav-link { margin-top: 2px; }
+.nav-link svg { width: 20px; height: 20px; flex: none; opacity: .75; }
+.nav-link:hover { background: var(--sidebar-2); color: #fff; }
+.nav-link[aria-current="true"] { background: rgba(224, 118, 59, 0.16); color: #f4b78e; font-weight: 600; }
+.nav-link[aria-current="true"] svg { opacity: 1; color: var(--heat); }
+.nav-link[aria-current="true"]::before {
+  content: ""; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px;
+  background: var(--heat);
+}
+.sidebar-foot {
+  padding: 14px 18px 16px; border-top: 1px solid rgba(255, 255, 255, 0.09);
+  font-size: 12px; line-height: 1.6; color: var(--sidebar-muted);
+}
+.sidebar-foot b { color: var(--sidebar-text); font-weight: 600; }
+.menu-btn {
+  display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 10px;
+  border: 1px solid var(--border); background: transparent; color: var(--text-2); cursor: pointer; flex: none;
+}
+.menu-btn:hover { background: var(--surface-2); color: var(--text-1); }
+@media (min-width: 1024px) { .menu-btn { display: none; } }
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.conn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px;
+  background: var(--surface-2); color: var(--text-2); font-size: 13px; font-weight: 500; white-space: nowrap;
+}
 .conn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .conn[data-state="ok"] .dot { background: var(--good); }
 .conn[data-state="bad"] .dot { background: var(--critical); }
 .icon-btn {
-  display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px;
-  border: 1px solid var(--border); background: transparent; cursor: pointer; color: var(--text-2);
+  display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 10px;
+  border: 1px solid var(--border); background: transparent; cursor: pointer; color: var(--text-2); flex: none;
 }
 .icon-btn:hover { background: var(--surface-2); color: var(--text-1); }
-
-main { padding: 24px 0 64px; }
-.stack > * + * { margin-top: 20px; }
+main { flex: 1; }
+.wrap { max-width: 1160px; margin: 0 auto; padding: 24px 20px 72px; }
+.stack > * + * { margin-top: 22px; }
 
 /* Banner */
 .banner {
@@ -145,7 +233,10 @@ main { padding: 24px 0 64px; }
 .scale { margin-top: 26px; }
 .scale-track { position: relative; height: 10px; border-radius: 5px; background: var(--surface-2); }
 .scale-heatzone { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 5px 0 0 5px; background: var(--heat-wash); }
-.scale-band { position: absolute; top: 0; bottom: 0; background: var(--series-wash); border-left: 2px solid var(--series); border-right: 2px solid var(--series); }
+.scale-band {
+  position: absolute; top: 0; bottom: 0; background: var(--series-wash);
+  border-left: 2px solid var(--series); border-right: 2px solid var(--series);
+}
 .scale-marker {
   position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
   background: var(--text-1); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--border);
@@ -168,7 +259,7 @@ main { padding: 24px 0 64px; }
 .pill[data-state="good"] .icon { color: var(--good); }
 .pill[data-state="heat"] .icon { color: var(--heat); }
 .pill[data-state="bad"] .icon { color: var(--critical); }
-.pill[data-state="armed"] .icon { color: var(--series); }
+.pill[data-state="armed"] .icon { color: var(--accent); }
 .watch-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .watch-title strong { font-size: 15px; }
 .watch-sentence { margin: 14px 0 0; font-size: 16px; line-height: 1.55; }
@@ -208,15 +299,13 @@ main { padding: 24px 0 64px; }
 .link-btn {
   border: 0; background: none; padding: 4px 0; cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600;
 }
-:root[data-theme="dark"] .link-btn { color: var(--series); }
-@media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .link-btn { color: var(--series); } }
 .table-wrap { margin-top: 12px; max-height: 360px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-caption { text-align: left; padding: 10px 12px; color: var(--text-2); }
-th, td { padding: 8px 12px; text-align: right; border-top: 1px solid var(--border); white-space: nowrap; }
-th:first-child, td:first-child { text-align: left; }
-thead th { position: sticky; top: 0; background: var(--surface); color: var(--text-2); font-weight: 600; border-top: 0; }
-td { font-variant-numeric: tabular-nums; }
+.table-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table-wrap caption { text-align: left; padding: 10px 12px; color: var(--text-2); }
+.table-wrap th, .table-wrap td { padding: 8px 12px; text-align: right; border-top: 1px solid var(--border); white-space: nowrap; }
+.table-wrap th:first-child, .table-wrap td:first-child { text-align: left; }
+.table-wrap thead th { position: sticky; top: 0; background: var(--surface); color: var(--text-2); font-weight: 600; border-top: 0; }
+.table-wrap td { font-variant-numeric: tabular-nums; }
 
 .activity { margin-top: 22px; }
 .activity h3 { margin: 0 0 8px; font-size: 14px; font-weight: 650; }
@@ -253,7 +342,7 @@ td { font-variant-numeric: tabular-nums; }
   display: flex; align-items: center; border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
   min-height: 42px; padding: 0 12px;
 }
-.control:focus-within { border-color: var(--series); box-shadow: 0 0 0 3px var(--series-wash); }
+.control:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--heat-wash); }
 .control input, .control select { flex: 1; min-width: 0; border: 0; background: transparent; padding: 9px 0; outline: none; }
 .control select { cursor: pointer; }
 .control .suffix { color: var(--text-2); font-size: 14px; padding-left: 6px; }
@@ -284,216 +373,268 @@ td { font-variant-numeric: tabular-nums; }
   position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
   max-width: min(560px, calc(100vw - 32px)); padding: 12px 16px; border-radius: 12px;
   background: var(--text-1); color: var(--page); font-size: 14px; font-weight: 500; box-shadow: 0 8px 30px rgba(0, 0, 0, .25);
-  transition: opacity .2s, transform .2s;
+  transition: opacity .2s, transform .2s; z-index: 70;
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast.error { background: var(--critical); color: #fff; }
 
-@media (max-width: 880px) {
+/* Narrow content: the sidebar takes 264px from lg upward, so collapse the
+   two-column cards once the content column itself gets tight. */
+@media (max-width: 1280px) {
   .hero, .cols { grid-template-columns: minmax(0, 1fr); }
   .watch-panel { border-left: 0; padding-left: 0; border-top: 1px solid var(--border); padding-top: 24px; }
 }
-@media (max-width: 600px) {
+@media (max-width: 620px) {
   .card { padding: 18px; }
+  .wrap { padding: 18px 14px 56px; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .chart-wrap { height: 270px; }
   .fields { grid-template-columns: minmax(0, 1fr); }
   .kv { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .events li { grid-template-columns: 1fr; gap: 2px; }
   .events li .icon { display: none; }
-  .brand span { display: none; }
+  .page-sub { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
+  html { scroll-behavior: auto; }
 }
 </style>
 </head>
 <body>
-<header class="top">
-  <div class="wrap">
-    <div class="brand"><h1>Thermal Watch</h1><span>LG PC18SK heat pump</span></div>
-    <div class="top-right">
-      <span class="conn" id="conn" data-state="pending" role="status"><span class="dot" aria-hidden="true"></span><span id="connText">Connecting…</span></span>
-      <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark theme"></button>
+<a class="skip-link" href="#content">Skip to content</a>
+
+<div class="backdrop" id="sidebarBackdrop" hidden></div>
+
+<aside class="sidebar" id="sidebar" aria-label="Dashboard navigation">
+  <div class="flex items-center justify-between gap-2.5 px-4 pt-4 pb-3">
+    <div class="flex min-w-0 items-center gap-3">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor"><path d="M8 14.5c2.6 0 4.3-1.8 4.3-4.2 0-2.9-2.4-4.1-2.9-7.3C7.3 4.6 5.8 6.4 5.9 8.6c-.7-.4-1.2-1.2-1.3-2.1C3.9 7.6 3.7 8.7 3.7 10c0 2.6 1.8 4.5 4.3 4.5z"/></svg></span>
+      <div class="min-w-0">
+        <h1 class="brand-name">Thermal Watch</h1>
+        <span class="brand-sub">LG PC18SK heat pump</span>
+      </div>
     </div>
+    <button class="sidebar-close" id="sidebarClose" type="button" aria-label="Close menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+    </button>
   </div>
-</header>
+  <nav class="min-h-0 flex-1 overflow-y-auto px-3 pb-4" aria-label="Dashboard sections">
+    <p class="nav-label">Monitor</p>
+    <a class="nav-link" href="#overview" aria-current="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11.4 12 4.6l8 6.8"/><path d="M6.3 9.9V19a1 1 0 0 0 1 1h9.4a1 1 0 0 0 1-1V9.9"/><path d="M10 20v-5.4h4V20"/></svg>
+      Overview</a>
+    <a class="nav-link" href="#history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4.5v15h15"/><path d="m7.5 14.5 3.4-4.2 3 2.6 4.4-6.2"/></svg>
+      Temperature history</a>
+    <a class="nav-link" href="#usage">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.2 3.6 5.6 13.4h5.2l-1 7 7.6-9.8h-5.2z"/></svg>
+      Usage &amp; energy</a>
+    <p class="nav-label">Control</p>
+    <a class="nav-link" href="#settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h5.8M13.8 7H20"/><circle cx="11.8" cy="7" r="2"/><path d="M4 17h9.8M17.8 17H20"/><circle cx="15.8" cy="17" r="2"/></svg>
+      Night watch settings</a>
+    <a class="nav-link" href="#device">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 5a1.5 1.5 0 0 1 3 0v8.4a4.3 4.3 0 1 1-3 0V5z"/><path d="M12 9.5V15"/></svg>
+      Heat pump</a>
+  </nav>
+  <div class="sidebar-foot">
+    <b>Master Bedroom</b><br>Times in Europe/Lisbon
+  </div>
+</aside>
 
-<main>
-  <div class="wrap stack">
-    <noscript><div class="banner">This dashboard needs JavaScript.</div></noscript>
-    <div class="banner" id="banner" role="alert" hidden><span id="bannerIcon"></span><ul id="bannerList"></ul></div>
-
-    <section class="card hero" aria-labelledby="roomLabel">
-      <div>
-        <p class="eyebrow" id="roomLabel">Room temperature</p>
-        <div class="hero-figure"><span class="value" id="roomTemp">--</span><span class="unit">°C</span></div>
-        <p class="hero-caption" id="roomCaption">Reading the heat pump…</p>
-        <div class="scale" id="scale" role="img" aria-label="Room temperature against the night watch thresholds">
-          <div class="scale-track">
-            <div class="scale-heatzone" id="scaleHeat"></div>
-            <div class="scale-band" id="scaleBand"></div>
-            <div class="scale-marker" id="scaleMarker" hidden></div>
-          </div>
-          <div class="scale-ticks" id="scaleTicks" aria-hidden="true"></div>
-          <div class="scale-legend" aria-hidden="true">
-            <span><span class="swatch heatzone"></span><span id="legHeat">Heats below 20°</span></span>
-            <span><span class="swatch band"></span><span id="legBand">Switches off at 22°</span></span>
-          </div>
-        </div>
+<div class="app">
+  <header class="topbar">
+    <div class="mx-auto flex min-h-[62px] w-full max-w-[1160px] items-center gap-3.5 px-5">
+      <button class="menu-btn" id="sidebarOpen" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <div class="min-w-0">
+        <p class="page-title">Dashboard</p>
+        <p class="page-sub">Master Bedroom · LG PC18SK</p>
       </div>
-      <div class="watch-panel" aria-labelledby="watchLabel">
-        <div class="watch-title">
-          <strong id="watchLabel">Night watch</strong>
-          <span class="pill" id="watchPill" data-state="off"><span id="watchPillIcon"></span><span id="watchPillText">Loading</span></span>
-        </div>
-        <p class="watch-sentence" id="watchSentence"></p>
-        <dl class="facts">
-          <dt>Window</dt><dd id="factWindow">--</dd>
-          <dt id="factTimingLabel">Starts</dt><dd id="factTiming">--</dd>
-          <dt>Last check</dt><dd id="factCheck">--</dd>
-          <dt>Last action</dt><dd id="factAction">None yet</dd>
-        </dl>
-        <p class="night-summary" id="nightSummary" hidden></p>
+      <div class="top-right">
+        <span class="conn" id="conn" data-state="pending" role="status"><span class="dot" aria-hidden="true"></span><span id="connText">Connecting…</span></span>
+        <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark theme"></button>
       </div>
-    </section>
+    </div>
+  </header>
 
-    <section class="card" aria-labelledby="historyTitle">
-      <div class="card-head">
+  <main id="content">
+    <div class="wrap stack">
+      <noscript><div class="banner">This dashboard needs JavaScript.</div></noscript>
+      <div class="banner" id="banner" role="alert" hidden><span id="bannerIcon"></span><ul id="bannerList"></ul></div>
+
+      <section class="card hero" id="overview" aria-labelledby="roomLabel">
         <div>
-          <h2 id="historyTitle">Temperature history</h2>
-          <div class="sub" id="historySub">Logged every minute</div>
+          <p class="eyebrow" id="roomLabel">Room temperature</p>
+          <div class="hero-figure"><span class="value" id="roomTemp">--</span><span class="unit">°C</span></div>
+          <p class="hero-caption" id="roomCaption">Reading the heat pump…</p>
+          <div class="scale" id="scale" role="img" aria-label="Room temperature against the night watch thresholds">
+            <div class="scale-track">
+              <div class="scale-heatzone" id="scaleHeat"></div>
+              <div class="scale-band" id="scaleBand"></div>
+              <div class="scale-marker" id="scaleMarker" hidden></div>
+            </div>
+            <div class="scale-ticks" id="scaleTicks" aria-hidden="true"></div>
+            <div class="scale-legend" aria-hidden="true">
+              <span><span class="swatch heatzone"></span><span id="legHeat">Heats below 20°</span></span>
+              <span><span class="swatch band"></span><span id="legBand">Switches off at 22°</span></span>
+            </div>
+          </div>
         </div>
-        <div class="chips" role="group" aria-label="Time range">
-          <button class="chip" type="button" data-range="24h" aria-pressed="true">24 hours</button>
-          <button class="chip" type="button" data-range="7d" aria-pressed="false">7 days</button>
-          <button class="chip" type="button" data-range="30d" aria-pressed="false">30 days</button>
+        <div class="watch-panel" aria-labelledby="watchLabel">
+          <div class="watch-title">
+            <strong id="watchLabel">Night watch</strong>
+            <span class="pill" id="watchPill" data-state="off"><span id="watchPillIcon"></span><span id="watchPillText">Loading</span></span>
+          </div>
+          <p class="watch-sentence" id="watchSentence"></p>
+          <dl class="facts">
+            <dt>Window</dt><dd id="factWindow">--</dd>
+            <dt id="factTimingLabel">Starts</dt><dd id="factTiming">--</dd>
+            <dt>Last check</dt><dd id="factCheck">--</dd>
+            <dt>Last action</dt><dd id="factAction">None yet</dd>
+          </dl>
+          <p class="night-summary" id="nightSummary" hidden></p>
         </div>
-      </div>
-      <div class="stats">
-        <div class="stat"><div class="label">Lowest</div><div class="value" id="statLow">--</div><div class="note" id="statLowNote">&nbsp;</div></div>
-        <div class="stat"><div class="label">Highest</div><div class="value" id="statHigh">--</div><div class="note" id="statHighNote">&nbsp;</div></div>
-        <div class="stat"><div class="label">Average</div><div class="value" id="statAvg">--</div><div class="note" id="statAvgNote">&nbsp;</div></div>
-        <div class="stat"><div class="label">Readings</div><div class="value" id="statCount">--</div><div class="note" id="statCountNote">&nbsp;</div></div>
-      </div>
-      <ul class="key" aria-label="Chart key">
-        <li><span class="k-line" aria-hidden="true"></span>Room temperature</li>
-        <li><span class="k-night" aria-hidden="true"></span><span id="keyNight">Night window</span></li>
-        <li><span class="k-heat" aria-hidden="true"></span>Heating (night watch)</li>
-        <li><span class="k-thresh" aria-hidden="true"></span><span id="keyThresh">Thresholds</span></li>
-      </ul>
-      <div class="chart-wrap" id="chartWrap">
-        <canvas id="chart" role="img" aria-label="Room temperature chart"></canvas>
-        <div class="chart-empty" id="chartEmpty" hidden></div>
-      </div>
-      <div class="chart-foot">
-        <span class="sub" id="zoneNote">Times in Europe/Lisbon</span>
-        <button class="link-btn" id="tableBtn" type="button" aria-expanded="false" aria-controls="tableWrap">Show as table</button>
-      </div>
-      <div class="table-wrap" id="tableWrap" hidden>
-        <table>
-          <caption id="tableCaption">Room temperature</caption>
-          <thead><tr><th scope="col">Period</th><th scope="col">Average</th><th scope="col">Low</th><th scope="col">High</th><th scope="col">Readings</th></tr></thead>
-          <tbody id="tableBody"></tbody>
-        </table>
-      </div>
-      <div class="activity">
-        <h3>Night watch activity</h3>
-        <ul class="events" id="events"></ul>
-      </div>
-    </section>
+      </section>
 
-    <section class="card" aria-labelledby="usageTitle">
-      <div class="card-head">
-        <div>
-          <h2 id="usageTitle">Usage &amp; energy</h2>
-          <div class="sub" id="usageSub">Estimated from on/off runs</div>
-        </div>
-        <span class="sub" id="usageZoneNote">Times in Europe/Lisbon</span>
-      </div>
-      <div class="stats">
-        <div class="stat"><div class="label">Right now</div><div class="value" id="usageNow">--</div><div class="note" id="usageNowNote">&nbsp;</div></div>
-        <div class="stat"><div class="label">Last run</div><div class="value" id="usageLast">--</div><div class="note" id="usageLastNote">&nbsp;</div></div>
-        <div class="stat"><div class="label">Time on this month</div><div class="value" id="usageHours">--</div><div class="note" id="usageHoursNote">&nbsp;</div></div>
-        <div class="stat"><div class="label">Energy this month</div><div class="value" id="usageKwh">--</div><div class="note" id="usageKwhNote">&nbsp;</div></div>
-      </div>
-      <div class="chart-wrap">
-        <canvas id="usageChart" role="img" aria-label="Estimated energy use per month"></canvas>
-        <div class="chart-empty" id="usageEmpty" hidden></div>
-      </div>
-      <div class="activity">
-        <h3>Recent runs</h3>
-        <ul class="events" id="runList"></ul>
-      </div>
-    </section>
-
-    <div class="cols">
-      <section class="card" aria-labelledby="settingsTitle">
-        <div class="card-head"><h2 id="settingsTitle">Night watch settings</h2></div>
-        <div class="switch-row">
+      <section class="card" id="history" aria-labelledby="historyTitle">
+        <div class="card-head">
           <div>
-            <div class="what" id="switchLabel">Night watch</div>
-            <div class="sub" id="switchSub">Keeps the room warm overnight</div>
+            <h2 id="historyTitle">Temperature history</h2>
+            <div class="sub" id="historySub">Logged every minute</div>
           </div>
-          <button class="switch" id="watchSwitch" type="button" role="switch" aria-checked="false" aria-labelledby="switchLabel"></button>
+          <div class="chips" role="group" aria-label="Time range">
+            <button class="chip" type="button" data-range="24h" aria-pressed="true">24 hours</button>
+            <button class="chip" type="button" data-range="7d" aria-pressed="false">7 days</button>
+            <button class="chip" type="button" data-range="30d" aria-pressed="false">30 days</button>
+          </div>
         </div>
-        <form id="settingsForm" novalidate>
-          <div class="fields">
-            <div class="field">
-              <label for="lowIn">Heat when below</label>
-              <div class="control"><input id="lowIn" type="number" inputmode="decimal" step="0.5" min="5" max="29" required><span class="suffix">°C</span></div>
-            </div>
-            <div class="field">
-              <label for="highIn">Heat up to</label>
-              <div class="control"><input id="highIn" type="number" inputmode="numeric" step="1" min="16" max="30" required><span class="suffix">°C</span></div>
-              <span class="hint">Whole degrees; then it switches off</span>
-            </div>
-            <div class="field">
-              <label for="startSel">From</label>
-              <div class="control"><select id="startSel"></select></div>
-            </div>
-            <div class="field">
-              <label for="endSel">Until</label>
-              <div class="control"><select id="endSel"></select></div>
-            </div>
-            <div class="field full">
-              <label for="tzIn">Timezone</label>
-              <div class="control"><input id="tzIn" type="text" list="tzList" autocomplete="off" spellcheck="false" placeholder="Europe/Lisbon"></div>
-              <datalist id="tzList"><option value="Europe/Lisbon"><option value="Europe/London"><option value="UTC"></datalist>
-            </div>
-            <div class="field full">
-              <label class="check"><input id="fanIn" type="checkbox"> Gentle fan (low) while heating</label>
-            </div>
-          </div>
-          <p class="form-summary" id="formSummary"></p>
-          <p class="form-error" id="formError" role="alert"></p>
-          <div class="actions">
-            <button class="btn primary" id="saveBtn" type="submit" disabled>Save changes</button>
-            <button class="btn" id="resetBtn" type="button" disabled>Discard</button>
-          </div>
-        </form>
+        <div class="stats">
+          <div class="stat"><div class="label">Lowest</div><div class="value" id="statLow">--</div><div class="note" id="statLowNote">&nbsp;</div></div>
+          <div class="stat"><div class="label">Highest</div><div class="value" id="statHigh">--</div><div class="note" id="statHighNote">&nbsp;</div></div>
+          <div class="stat"><div class="label">Average</div><div class="value" id="statAvg">--</div><div class="note" id="statAvgNote">&nbsp;</div></div>
+          <div class="stat"><div class="label">Readings</div><div class="value" id="statCount">--</div><div class="note" id="statCountNote">&nbsp;</div></div>
+        </div>
+        <ul class="key" aria-label="Chart key">
+          <li><span class="k-line" aria-hidden="true"></span>Room temperature</li>
+          <li><span class="k-night" aria-hidden="true"></span><span id="keyNight">Night window</span></li>
+          <li><span class="k-heat" aria-hidden="true"></span>Heating (night watch)</li>
+          <li><span class="k-thresh" aria-hidden="true"></span><span id="keyThresh">Thresholds</span></li>
+        </ul>
+        <div class="chart-wrap" id="chartWrap">
+          <canvas id="chart" role="img" aria-label="Room temperature chart"></canvas>
+          <div class="chart-empty" id="chartEmpty" hidden></div>
+        </div>
+        <div class="chart-foot">
+          <span class="sub" id="zoneNote">Times in Europe/Lisbon</span>
+          <button class="link-btn" id="tableBtn" type="button" aria-expanded="false" aria-controls="tableWrap">Show as table</button>
+        </div>
+        <div class="table-wrap" id="tableWrap" hidden>
+          <table>
+            <caption id="tableCaption">Room temperature</caption>
+            <thead><tr><th scope="col">Period</th><th scope="col">Average</th><th scope="col">Low</th><th scope="col">High</th><th scope="col">Readings</th></tr></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <div class="activity">
+          <h3>Night watch activity</h3>
+          <ul class="events" id="events"></ul>
+        </div>
       </section>
 
-      <section class="card" aria-labelledby="deviceTitle">
-        <div class="card-head"><h2 id="deviceTitle">Heat pump</h2><span class="sub" id="deviceChecked"></span></div>
-        <dl class="kv">
-          <div><dt>Power</dt><dd id="devPower">--</dd></div>
-          <div><dt>Mode</dt><dd id="devMode">--</dd></div>
-          <div><dt>Target</dt><dd id="devTarget">--</dd></div>
-          <div><dt>Fan</dt><dd id="devFan">--</dd></div>
-        </dl>
-        <div class="actions">
-          <button class="btn heat" id="heatNowBtn" type="button" disabled><span id="heatNowIcon"></span><span id="heatNowText">Heat now</span></button>
-          <button class="btn" id="offBtn" type="button" disabled>Turn off</button>
+      <section class="card" id="usage" aria-labelledby="usageTitle">
+        <div class="card-head">
+          <div>
+            <h2 id="usageTitle">Usage &amp; energy</h2>
+            <div class="sub" id="usageSub">Estimated from on/off runs</div>
+          </div>
+          <span class="sub" id="usageZoneNote">Times in Europe/Lisbon</span>
         </div>
-        <p class="device-note" id="deviceNote">Manual commands go straight to the heat pump.</p>
+        <div class="stats">
+          <div class="stat"><div class="label">Right now</div><div class="value" id="usageNow">--</div><div class="note" id="usageNowNote">&nbsp;</div></div>
+          <div class="stat"><div class="label">Last run</div><div class="value" id="usageLast">--</div><div class="note" id="usageLastNote">&nbsp;</div></div>
+          <div class="stat"><div class="label">Time on this month</div><div class="value" id="usageHours">--</div><div class="note" id="usageHoursNote">&nbsp;</div></div>
+          <div class="stat"><div class="label">Energy this month</div><div class="value" id="usageKwh">--</div><div class="note" id="usageKwhNote">&nbsp;</div></div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="usageChart" role="img" aria-label="Estimated energy use per month"></canvas>
+          <div class="chart-empty" id="usageEmpty" hidden></div>
+        </div>
+        <div class="activity">
+          <h3>Recent runs</h3>
+          <ul class="events" id="runList"></ul>
+        </div>
       </section>
+
+      <div class="cols">
+        <section class="card" id="settings" aria-labelledby="settingsTitle">
+          <div class="card-head"><h2 id="settingsTitle">Night watch settings</h2></div>
+          <div class="switch-row">
+            <div>
+              <div class="what" id="switchLabel">Night watch</div>
+              <div class="sub" id="switchSub">Keeps the room warm overnight</div>
+            </div>
+            <button class="switch" id="watchSwitch" type="button" role="switch" aria-checked="false" aria-labelledby="switchLabel"></button>
+          </div>
+          <form id="settingsForm" novalidate>
+            <div class="fields">
+              <div class="field">
+                <label for="lowIn">Heat when below</label>
+                <div class="control"><input id="lowIn" type="number" inputmode="decimal" step="0.5" min="5" max="29" required><span class="suffix">°C</span></div>
+              </div>
+              <div class="field">
+                <label for="highIn">Heat up to</label>
+                <div class="control"><input id="highIn" type="number" inputmode="numeric" step="1" min="16" max="30" required><span class="suffix">°C</span></div>
+                <span class="hint">Whole degrees; then it switches off</span>
+              </div>
+              <div class="field">
+                <label for="startSel">From</label>
+                <div class="control"><select id="startSel"></select></div>
+              </div>
+              <div class="field">
+                <label for="endSel">Until</label>
+                <div class="control"><select id="endSel"></select></div>
+              </div>
+              <div class="field full">
+                <label for="tzIn">Timezone</label>
+                <div class="control"><input id="tzIn" type="text" list="tzList" autocomplete="off" spellcheck="false" placeholder="Europe/Lisbon"></div>
+                <datalist id="tzList"><option value="Europe/Lisbon"><option value="Europe/London"><option value="UTC"></datalist>
+              </div>
+              <div class="field full">
+                <label class="check"><input id="fanIn" type="checkbox"> Gentle fan (low) while heating</label>
+              </div>
+            </div>
+            <p class="form-summary" id="formSummary"></p>
+            <p class="form-error" id="formError" role="alert"></p>
+            <div class="actions">
+              <button class="btn primary" id="saveBtn" type="submit" disabled>Save changes</button>
+              <button class="btn" id="resetBtn" type="button" disabled>Discard</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="card" id="device" aria-labelledby="deviceTitle">
+          <div class="card-head"><h2 id="deviceTitle">Heat pump</h2><span class="sub" id="deviceChecked"></span></div>
+          <dl class="kv">
+            <div><dt>Power</dt><dd id="devPower">--</dd></div>
+            <div><dt>Mode</dt><dd id="devMode">--</dd></div>
+            <div><dt>Target</dt><dd id="devTarget">--</dd></div>
+            <div><dt>Fan</dt><dd id="devFan">--</dd></div>
+          </dl>
+          <div class="actions">
+            <button class="btn heat" id="heatNowBtn" type="button" disabled><span id="heatNowIcon"></span><span id="heatNowText">Heat now</span></button>
+            <button class="btn" id="offBtn" type="button" disabled>Turn off</button>
+          </div>
+          <p class="device-note" id="deviceNote">Manual commands go straight to the heat pump.</p>
+        </section>
+      </div>
     </div>
-  </div>
-</main>
+  </main>
+</div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
 <script>
 'use strict';
 const { DateTime } = luxon;
@@ -1579,6 +1720,50 @@ refreshAll();
 setInterval(refreshOverview, 30000);
 setInterval(() => { loadTemps(false); refreshSummary(); refreshRuntime(); }, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAll(); });
+</script>
+
+<script>
+/* Dashboard shell: mobile drawer + section highlighting (scrollspy). */
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const sidebar = $('sidebar'), backdrop = $('sidebarBackdrop');
+  const openBtn = $('sidebarOpen'), closeBtn = $('sidebarClose');
+  const mqDesk = window.matchMedia('(min-width: 1024px)');
+
+  function setMenu(open) {
+    document.body.classList.toggle('sidebar-open', open);
+    backdrop.hidden = !open;
+    openBtn.setAttribute('aria-expanded', String(open));
+  }
+  openBtn.addEventListener('click', () => setMenu(!document.body.classList.contains('sidebar-open')));
+  closeBtn.addEventListener('click', () => setMenu(false));
+  backdrop.addEventListener('click', () => setMenu(false));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !mqDesk.matches && document.body.classList.contains('sidebar-open')) setMenu(false);
+  });
+  sidebar.querySelectorAll('.nav-link').forEach((link) => {
+    link.addEventListener('click', () => { if (!mqDesk.matches) setMenu(false); });
+  });
+  if (typeof mqDesk.addEventListener === 'function') mqDesk.addEventListener('change', () => setMenu(false));
+
+  // Highlight the section currently in view.
+  const links = new Map();
+  sidebar.querySelectorAll('.nav-link').forEach((link) => links.set(link.getAttribute('href').slice(1), link));
+  const sections = [...links.keys()].map((id) => document.getElementById(id)).filter(Boolean);
+  const setCurrent = (id) => links.forEach((link, key) => {
+    if (key === id) link.setAttribute('aria-current', 'true');
+    else link.removeAttribute('aria-current');
+  });
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      const visible = entries.filter((en) => en.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      if (visible.length) setCurrent(visible[0].target.id);
+    }, { rootMargin: '-70px 0px -55% 0px' });
+    sections.forEach((s) => io.observe(s));
+  }
+})();
+
 </script>
 </body>
 </html>

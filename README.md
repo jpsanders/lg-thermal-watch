@@ -145,6 +145,21 @@ tailscale ip
 time), plus an optional `bucket_s` to average readings into buckets (7d and 30d default to 5 and 30
 minutes). Device endpoints answer `503` without credentials and `429` when the command throttle is spent.
 
+## Dashboard
+
+`static/index.html` is a single-file page: TailAdmin-style shell (ink-black sidebar, sticky header,
+cream content) built with Tailwind utilities via the Tailwind browser CDN, plus a hand-written CSS
+layer for the palette variables and the data components (scale, charts, event lists, form controls).
+The palette is cream surfaces, ink-black text and sidebar, and a burnt-orange accent; the room
+temperature line is drawn in ink (cream in dark mode) so heating activity stays the only orange on
+the chart. Light and dark themes share the same variable set, driven by `data-theme` and
+`prefers-color-scheme` with the existing toggle.
+
+The data-layer JavaScript is plain, framework-free, and shared by both themes: charts read their
+colours from the CSS variables at render time, so a theme switch just re-renders. If the Tailwind or
+Chart.js CDN is unreachable the page degrades — shell spacing and charts are lost, but the layout,
+forms and controls keep working. Layout and drawer mechanics are plain CSS, not utility-dependent.
+
 ## Night watch
 
 The night watch is configured via `NightWatchConfig` (from the dashboard or the API):
