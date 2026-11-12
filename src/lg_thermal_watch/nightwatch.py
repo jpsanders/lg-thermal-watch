@@ -45,7 +45,7 @@ def is_valid_timezone(name: str) -> bool:
     """Return True when ``name`` is a known IANA timezone."""
     try:
         ZoneInfo(name)
-    except (ZoneInfoNotFoundError, ValueError):
+    except ZoneInfoNotFoundError, ValueError:
         return False
     return True
 
@@ -392,7 +392,7 @@ class LGPC18SKNightWatch:
             since = state.get("heating_since")
             self.heating_since = datetime.fromisoformat(since) if since else None
             _LOGGER.info("Night watch: resumed heating ownership from %s", self.state_path)
-        except (OSError, ValueError, KeyError, TypeError):
+        except OSError, ValueError, KeyError, TypeError:
             _LOGGER.exception("Night watch: ignoring unreadable state file %s", self.state_path)
 
     def snapshot(self) -> dict[str, Any]:

@@ -201,10 +201,15 @@ class RuntimeTracker:
         self, months: int = 6, avg_power_kw: float = 1.0, tz_name: str | None = None
     ) -> list[dict[str, Any]]:
         """
-        Return per-calendar-month hours and estimated kWh, oldest first.
+        Return the hours run and the estimated kWh per calendar month, oldest first.
 
         Sessions are bucketed by the month they started in (the watch zone); an open session
         contributes its running time to its start month.
+
+        :param months: How many months to return, ending with the current one
+        :param avg_power_kw: The assumed average draw while running, in kW
+        :param tz_name: The IANA zone that decides where a month starts; the watch zone when None
+        :returns: One dict per month with its hours and estimated kWh
         """
         now = self.now_fn()
         if now.tzinfo is None:

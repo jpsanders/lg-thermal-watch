@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lg-thermal-watch": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/jpsanders/lg-thermal-watch@1.0.0", "lg-thermal-watch", "mcp"]
+    }
+  }
+}

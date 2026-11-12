@@ -1,0 +1,19 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "lg-thermal-watch",
+  "description": "A night watch, a temperature log and a dashboard for an LG heat pump, for people and AI agents.",
+  "owner": {
+    "name": "James Phillip Sanders",
+    "email": "hello@jamesphillipsanders.com"
+  },
+  "plugins": [
+    {
+      "name": "lg-thermal-watch",
+      "description": "A skill and an MCP server for an LG heat pump run by lg-thermal-watch on your machine.",
+      "version": "1.0.0",
+      "source": "./",
+      "category": "productivity",
+      "homepage": "https://github.com/jpsanders/lg-thermal-watch"
+    }
+  ]
+}

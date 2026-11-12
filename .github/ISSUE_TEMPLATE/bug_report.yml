@@ -1,0 +1,25 @@
+---
+name: Bug report
+description: The night watch, the log, the dashboard or a command did something it should not have
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What the service did, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: The log around it
+      description: From `journalctl --user -u lg-thermal-watch`. Remove tokens, device ids and anything private.
+      render: text
+  - type: input
+    id: unit
+    attributes:
+      label: Unit and versions
+      placeholder: LG PC18SK, lg-thermal-watch 1.0.0, Python 3.15.2, Ubuntu 26.04
+    validations:
+      required: true

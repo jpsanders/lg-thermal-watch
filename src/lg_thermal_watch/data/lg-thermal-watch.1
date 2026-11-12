@@ -1,0 +1,185 @@
+.TH LG-THERMAL-WATCH 1 "" "lg-thermal-watch" "User Commands"
+.SH NAME
+lg-thermal-watch \- a night watch, a temperature log and a dashboard for an LG heat pump on the LG ThinQ Connect API
+.SH SYNOPSIS
+.RS 4
+.nf
+lg\-thermal\-watch [serve]
+lg\-thermal\-watch token [\-\-json]
+lg\-thermal\-watch mcp
+lg\-thermal\-watch guide
+lg\-thermal\-watch man [\-\-install | \-\-raw]
+lg\-thermal\-watch \-\-version
+.fi
+.RE
+.SH DESCRIPTION
+.PP
+lg-thermal-watch drives an LG air to air heat pump through LG's official ThinQ Connect API. It was built for the PC18SK indoor unit and works with any ThinQ Connect air conditioner that reports a room temperature.
+.PP
+Three things run in one small process:
+.IP \(bu 2
+\fBThe night watch.\fR When the room drops below a low threshold inside a night window (00:00 to 07:00 by default,
+.PP
+in a timezone you set), it powers the unit on, heats gently to a target with the fan on LOW, then switches it off.
+.IP \(bu 2
+\fBThe temperature log.\fR Every 60 seconds the room temperature goes into SQLite, with min, max and mean over any
+.PP
+window, and every on and off run is recorded with its duration and source.
+.IP \(bu 2
+\fBThe dashboard and API.\fR A page with the live room temperature against the thresholds, what the watch is doing
+.PP
+and why, a history chart, the runs and an energy estimate, and manual heat and off controls.
+.PP
+Every command to the unit is rate limited and kept within safe bounds, and the unit only gets the settings it lacks.
+.SH COMMANDS
+.TP
+\fBserve\fR
+Run the service: the log, the night watch if enabled, the dashboard and the API. The default.
+.TP
+\fBtoken\fR
+Print the API token and the dashboard link that stores it in your browser.
+.TP
+\fBmcp\fR
+Serve the running service's tools to AI agents over the Model Context Protocol, on stdio.
+.TP
+\fBguide\fR
+Print this manual as Markdown, for people and agents.
+.TP
+\fBman\fR
+Show this manual as a man page. \fB\-\-install\fR puts it where \fBman lg\-thermal\-watch\fR finds it.
+.SH CONFIGURATION
+.PP
+Everything is read from the environment; a systemd unit reads it from an environment file kept at mode 600.
+.TP
+\fBLG_THINQ_ACCESS_TOKEN\fR
+Your ThinQ Connect personal access token. Required.
+.TP
+\fBLG_THINQ_CLIENT_ID\fR
+A client id for ThinQ Connect. Required.
+.TP
+\fBLG_THINQ_COUNTRY_CODE\fR
+The two letter country of your LG account, such as \fBPT\fR. Required.
+.TP
+\fBLG_THINQ_DEVICE_ID\fR
+The unit's device id.
+.TP
+\fBLG_THERMAL_WATCH_HOST\fR
+Address to listen on. Default \fB127.0.0.1\fR.
+.TP
+\fBLG_THERMAL_WATCH_PORT\fR
+Port. Default \fB8000\fR.
+.TP
+\fBLG_THERMAL_WATCH_TOKEN\fR
+The API token. Default: generated once into the state folder.
+.TP
+\fBLG_THERMAL_WATCH_ALLOWED_HOSTS\fR
+Extra host names the dashboard may be reached by, comma separated.
+.TP
+\fBLG_THERMAL_WATCH_TIMEZONE\fR
+IANA zone of the night window when the settings omit one, such as \fBEurope/Lisbon\fR.
+.TP
+\fBLG_THERMAL_WATCH_DB\fR
+SQLite file. Default \fB~/.local/share/lg\-thermal\-watch/room_temps.db\fR.
+.TP
+\fBLG_THERMAL_WATCH_NIGHTWATCH_CONFIG\fR
+Night watch settings. Default \fB~/.config/lg\-thermal\-watch/nightwatch.json\fR.
+.TP
+\fBLG_THERMAL_WATCH_NIGHTWATCH_STATE\fR
+Night watch state. Default: a \fB.state.json\fR file beside the settings.
+.TP
+\fBLG_THERMAL_WATCH_AVG_POWER_KW\fR
+Assumed average draw while running, for the estimate. Default \fB1.0\fR.
+.TP
+\fBLG_THERMAL_WATCH_URL\fR
+Where \fBmcp\fR finds the running service. Default \fBhttp://127.0.0.1:<port>\fR.
+.SH NIGHT WATCH SETTINGS
+.PP
+\fBenabled\fR (true), \fBlow_threshold_c\fR (18, from 5 to 29), \fBhigh_target_c\fR (22, from 16 to 30), \fBfan_low\fR (true), \fBnight_start_hour\fR (0) and \fBnight_end_hour\fR (7, exclusive), and \fBtimezone\fR. The dashboard edits them, and they are saved in the settings file, so a restart or a reboot carries on where it was.
+.SH SECURITY
+.PP
+Every \fB/api\fR call except \fB/api/health\fR needs the token, as \fBAuthorization: Bearer <token>\fR or as the cookie the dashboard sets. Open the link \fBlg\-thermal\-watch token\fR prints once per browser; the cookie is HttpOnly and SameSite=Strict, so other sites cannot read or send it. Requests naming a host the machine does not answer to (anything but localhost, the machine's own names, \fB*.ts.net\fR and IP addresses, plus \fBLG_THERMAL_WATCH_ALLOWED_HOSTS\fR) are refused, which stops DNS rebinding.
+.PP
+To reach the dashboard from your other devices over Tailscale, listen on the Tailscale address only, so the local network never sees the port: \fBLG_THERMAL_WATCH_HOST=$(tailscale ip \-4)\fR. Never expose the port to the internet.
+.SH API
+.TP
+\fBGET /api/health\fR
+Health check, no token needed.
+.TP
+\fBGET /api/overview\fR
+Everything the dashboard shows, in one call.
+.TP
+\fBGET /api/status\fR
+The unit's raw ThinQ status.
+.TP
+\fBGET /api/temps\fR
+Logged temperatures and stats; \fBtimeline=24h\fR, \fB7d\fR or \fB30d\fR, or \fBstart\fR and \fBend\fR.
+.TP
+\fBGET /api/runtime\fR
+On and off runs and the monthly energy estimate; \fBmonths=1\fR to \fB24\fR.
+.TP
+\fBPOST /api/device/heat\fR
+Heat now: \fB{"target_c": 22, "fan_low": true}\fR.
+.TP
+\fBPOST /api/device/off\fR
+Turn the unit off.
+.TP
+\fBGET /api/nightwatch\fR
+The night watch's live state.
+.TP
+\fBGET /api/nightwatch/config\fR
+The night watch settings.
+.TP
+\fBPOST /api/nightwatch/config\fR
+Replace the settings, and start or stop the watch to match.
+.TP
+\fBPOST /api/nightwatch/start\fR
+Enable and start the watch.
+.TP
+\fBPOST /api/nightwatch/stop\fR
+Disable and stop it; turns the unit off if the watch was heating.
+.SH MCP SERVER
+.PP
+\fBlg\-thermal\-watch mcp\fR speaks JSON-RPC 2.0 on stdio and calls the running service with the same token, so the service stays the only owner of the unit. Tools: \fBstatus\fR, \fBtemperatures\fR and \fBruntime\fR are read only; \fBheat\fR, \fBoff\fR, \fBnight_watch_set\fR, \fBnight_watch_start\fR and \fBnight_watch_stop\fR are marked destructive, so the harness asks first.
+.RS 4
+.nf
+{"mcpServers": {"lg\-thermal\-watch": {"command": "lg\-thermal\-watch", "args": ["mcp"]}}}
+.fi
+.RE
+.SH FILES
+.PP
+\fB~/.local/state/lg\-thermal\-watch/token\fR holds the token, mode 600. The database and settings live where the variables above say. \fB~/.local/share/man/man1/lg\-thermal\-watch.1\fR is where \fBman \-\-install\fR puts the man page.
+.SH EXIT STATUS
+.PP
+\fBserve\fR runs until stopped. The other commands exit 0 on success and 2 when the arguments are wrong.
+.SH EXAMPLES
+.PP
+Run it as a systemd user service:
+.RS 4
+.nf
+# ~/.config/systemd/user/lg\-thermal\-watch.service
+[Service]
+EnvironmentFile=%h/.config/lg\-thermal\-watch/lg\-thermal\-watch.env
+ExecStart=%h/.local/bin/lg\-thermal\-watch
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
+.fi
+.RE
+.RS 4
+.nf
+systemctl \-\-user enable \-\-now lg\-thermal\-watch
+lg\-thermal\-watch token
+curl \-H "Authorization: Bearer $(cat ~/.local/state/lg\-thermal\-watch/token)" http://127.0.0.1:8000/api/overview
+.fi
+.RE
+.SH FOR AGENTS
+.PP
+Read with \fBstatus\fR (or \fBGET /api/overview\fR) before anything else. \fBheat\fR, \fBoff\fR and the night watch tools act on a real heat pump in someone's home: call them only when the person asked for that change, say what you will do first, and report the answer. Keep the token private; it controls the unit.
+.SH SEE ALSO
+.PP
+https://github.com/jpsanders/lg-thermal-watch
+.SH AUTHOR
+.PP
+James Phillip Sanders, https://jamesphillipsanders.com

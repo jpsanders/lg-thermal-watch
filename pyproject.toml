@@ -10,20 +10,20 @@ authors = [
 maintainers = [
   { name = "James Phillip Sanders", email = "hello@jamesphillipsanders.com" }
 ]
-description = "Local AI control and telemetry for the LG PC18SK heat pump via the LG ThinQ Connect API."
+description = "A night watch, a temperature log and a dashboard for an LG heat pump on the official LG ThinQ Connect API, with an MCP server for AI agents."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.12"
+requires-python = ">=3.14"
+dynamic = ["version"]
 keywords = ["lg", "heat-pump", "hvac", "thinq", "smart-home", "iot", "energy", "python"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Typing :: Typed",
 ]
 dependencies = [
@@ -34,9 +34,10 @@ dependencies = [
 ]
 
 [project.urls]
+Homepage = "https://github.com/jpsanders/lg-thermal-watch"
 Repository = "https://github.com/jpsanders/lg-thermal-watch"
 Issues = "https://github.com/jpsanders/lg-thermal-watch/issues"
-Changelog = "https://github.com/jpsanders/lg-thermal-watch/releases"
+Changelog = "https://github.com/jpsanders/lg-thermal-watch/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
@@ -60,12 +61,13 @@ dev = [
 lg-thermal-watch = "lg_thermal_watch.api:main"
 
 [tool.setuptools_scm]
+fallback_version = "0.0.0"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-lg_thermal_watch = ["py.typed", "static/*.html"]
+lg_thermal_watch = ["py.typed", "static/*.html", "data/*"]
 
 [tool.mypy]
 strict = true

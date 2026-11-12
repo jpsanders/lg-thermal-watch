@@ -91,6 +91,9 @@ def paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path
 
 
+TOKEN = "test-token"
+
+
 @pytest.fixture
 def controller() -> MockController:
     """Return a fresh mock device."""
@@ -110,7 +113,8 @@ def client(
     monkeypatch.setattr(api, "_night_watch", watch)
     tracker = RuntimeTracker(db_path=str(paths / "runtime.db"), source_fn=api._runtime_source, gap_split_s=3600.0)
     monkeypatch.setattr(api, "_runtime_tracker", tracker)
-    with TestClient(api.create_app()) as test_client:
+    app = api.create_app(token=TOKEN, allowed_hosts=frozenset({"testserver"}))
+    with TestClient(app, headers={"Authorization": f"Bearer {TOKEN}"}) as test_client:
         yield test_client
 
 
@@ -267,7 +271,10 @@ def test_saved_config_autostarts_watch(
     monkeypatch.setattr(api, "_agent", agent)
     monkeypatch.setattr(api, "_temp_logger", None)
     monkeypatch.setattr(api, "_night_watch", None)
-    with TestClient(api.create_app()) as test_client:
+    with TestClient(
+        api.create_app(token=TOKEN, allowed_hosts=frozenset({"testserver"})),
+        headers={"Authorization": f"Bearer {TOKEN}"},
+    ) as test_client:
         watch = test_client.get("/api/nightwatch").json()
     assert watch["running"] is True
     assert watch["low_threshold_c"] == 20.0 and watch["high_target_c"] == 22.0
@@ -294,7 +301,10 @@ def test_missing_credentials_degrades_gracefully(paths: Path, monkeypatch: pytes
     monkeypatch.setattr(api, "_agent", None)
     monkeypatch.setattr(api, "_temp_logger", None)
     monkeypatch.setattr(api, "_night_watch", None)
-    with TestClient(api.create_app()) as test_client:
+    with TestClient(
+        api.create_app(token=TOKEN, allowed_hosts=frozenset({"testserver"})),
+        headers={"Authorization": f"Bearer {TOKEN}"},
+    ) as test_client:
         status = test_client.get("/api/status")
         assert status.status_code == 503
         assert "credentials" in status.json()["detail"]
@@ -330,3 +340,35 @@ def test_disable_reports_unit_left_on(client: TestClient, controller: MockContro
     response = client.post("/api/nightwatch/stop")
     assert response.status_code == 502
     assert "switching the heat pump off failed" in response.json()["detail"]
+
+
+def test_api_needs_the_token(paths: Path) -> None:
+    app = api.create_app(token=TOKEN, allowed_hosts=frozenset({"testserver"}))
+    with TestClient(app) as anonymous:
+        assert anonymous.get("/api/health").status_code == 200
+        assert anonymous.get("/api/overview").status_code == 401
+        assert anonymous.post("/api/device/off").status_code == 401
+        assert anonymous.post("/api/device/heat", json={"target_c": 22}).status_code == 401
+        wrong = anonymous.get("/api/overview", headers={"Authorization": "Bearer nope"})
+        assert wrong.status_code == 401
+
+
+def test_unknown_hosts_are_refused(paths: Path) -> None:
+    app = api.create_app(token=TOKEN)
+    with TestClient(app, headers={"Authorization": f"Bearer {TOKEN}"}) as client:
+        assert client.get("/api/health", headers={"Host": "attacker.example"}).status_code == 421
+        assert client.get("/api/health", headers={"Host": "127.0.0.1:8000"}).status_code == 200
+        assert client.get("/api/health", headers={"Host": "box.tail1234.ts.net:8000"}).status_code == 200
+
+
+def test_dashboard_link_sets_a_strict_cookie(paths: Path) -> None:
+    app = api.create_app(token=TOKEN, allowed_hosts=frozenset({"testserver"}))
+    with TestClient(app) as browser:
+        assert browser.get("/").status_code == 401
+        assert browser.get("/?token=wrong", follow_redirects=False).status_code == 401
+        link = browser.get(f"/?token={TOKEN}", follow_redirects=False)
+        assert link.status_code == 303
+        cookie = link.headers["set-cookie"].lower()
+        assert "httponly" in cookie and "samesite=strict" in cookie
+        assert browser.get("/").status_code == 200
+        assert browser.get("/api/nightwatch/config").status_code == 200

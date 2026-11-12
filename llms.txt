@@ -1,0 +1,14 @@
+# lg-thermal-watch
+
+> A night watch, a temperature log and a dashboard for an LG heat pump on the official LG ThinQ Connect API. The
+> night watch heats gently when the room gets cold at night; the API needs a token; an MCP server lets AI agents
+> read the room and, when asked, switch the heat.
+
+Install: `uv tool install git+https://github.com/jpsanders/lg-thermal-watch@1.0.0`, set the `LG_THINQ_*`
+credentials, run `lg-thermal-watch` (or as a systemd user service), then `lg-thermal-watch token` for the dashboard.
+
+## Docs
+
+- [Manual](https://github.com/jpsanders/lg-thermal-watch/blob/main/docs/MANUAL.md): settings, API, security, MCP
+- [Skill](https://github.com/jpsanders/lg-thermal-watch/blob/main/skills/lg-thermal-watch/SKILL.md): rules for agents
+- [README](https://github.com/jpsanders/lg-thermal-watch/blob/main/README.md)

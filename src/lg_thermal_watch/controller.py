@@ -52,7 +52,7 @@ def extract_temperature(status: dict[str, Any] | None, key: str) -> float | None
         value = status["temperature"].get(key)
     try:
         return float(value) if value is not None else None
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 

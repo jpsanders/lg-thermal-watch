@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from aiohttp import ClientSession, ClientTimeout
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
@@ -28,14 +28,15 @@ from lg_thermal_watch.nightwatch import (
     system_timezone_name,
 )
 from lg_thermal_watch.runtime import RuntimeTracker
+from lg_thermal_watch.security import COOKIE, bearer, host_allowed, resolve_token, same_token
 from lg_thermal_watch.tempdb import RoomTempLogger, normalize_ts
 
 _LOGGER = logging.getLogger(__name__)
 
-DB_PATH = os.environ.get("LG_THERMAL_WATCH_DB", "/tmp/opencode/lg_thinq_room_temps.db")  # nosec B108
-NIGHTWATCH_CONFIG_PATH = os.environ.get(
-    "LG_THERMAL_WATCH_NIGHTWATCH_CONFIG", "/tmp/opencode/lg_thermal_watch_nightwatch.json"  # nosec B108
-)
+_DATA_HOME = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "lg-thermal-watch"
+_CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "lg-thermal-watch"
+DB_PATH = os.environ.get("LG_THERMAL_WATCH_DB", str(_DATA_HOME / "room_temps.db"))
+NIGHTWATCH_CONFIG_PATH = os.environ.get("LG_THERMAL_WATCH_NIGHTWATCH_CONFIG", str(_CONFIG_HOME / "nightwatch.json"))
 # Runtime state (whether the watch currently owns the unit); defaults to a file next to the config.
 NIGHTWATCH_STATE_PATH = os.environ.get("LG_THERMAL_WATCH_NIGHTWATCH_STATE", "")
 STATIC_DIR = Path(__file__).parent / "static"
@@ -300,13 +301,48 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 # ---------------------------------------------------------------------- app
 
 
-def create_app() -> FastAPI:
-    """Create and return the FastAPI application for LG Thermal Watch."""
+LOCKED_PAGE = """<!doctype html><meta charset="utf-8"><title>LG Thermal Watch</title>
+<body style="font:16px/1.6 system-ui;max-width:36rem;margin:15vh auto;padding:0 1rem;background:#f9f6f0;color:#1c1611">
+<h1 style="font-size:1.4rem">This dashboard needs its link</h1>
+<p>Run <code>lg-thermal-watch token</code> on the machine that runs the service and open the link it prints.
+The browser remembers it after that.</p></body>"""
+
+
+def create_app(token: str | None = None, allowed_hosts: frozenset[str] = frozenset()) -> FastAPI:
+    """
+    Create the FastAPI application for LG Thermal Watch.
+
+    :param token: The API token; by default ``LG_THERMAL_WATCH_TOKEN`` or the token file, read on first request
+    :param allowed_hosts: Host names to accept besides localhost, this machine, ``*.ts.net`` and IP addresses
+    :returns: The application
+    """
     app = FastAPI(
         title="LG Thermal Watch",
-        description="Local AI control and telemetry for the LG PC18SK heat pump via the LG ThinQ Connect API.",
+        description="Local AI control and telemetry for an LG heat pump via the LG ThinQ Connect API.",
         lifespan=lifespan,
     )
+    known: dict[str, str] = {} if token is None else {"token": token}
+
+    def expected() -> str:
+        if "token" not in known:
+            known["token"] = resolve_token()
+        return known["token"]
+
+    def authorized(request: Request) -> bool:
+        return same_token(bearer(request.headers.get("authorization")), expected()) or same_token(
+            request.cookies.get(COOKIE), expected()
+        )
+
+    @app.middleware("http")
+    async def guard(request: Request, call_next: Any) -> Response:
+        """Refuse unknown Host headers, and API calls without the token."""
+        if not host_allowed(request.headers.get("host", ""), allowed_hosts):
+            return JSONResponse({"detail": "unknown host"}, status_code=421)
+        path = request.url.path
+        if path.startswith("/api/") and path != "/api/health" and not authorized(request):
+            return JSONResponse({"detail": "token required: run `lg-thermal-watch token`"}, status_code=401)
+        response: Response = await call_next(request)
+        return response
 
     @app.get("/api/health")
     async def health() -> dict[str, Any]:
@@ -474,9 +510,17 @@ def create_app() -> FastAPI:
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR), check_dir=False), name="static")
 
-    @app.get("/", response_class=FileResponse)
-    async def dashboard() -> FileResponse:
-        """Serve the dashboard UI."""
+    @app.get("/", response_model=None)
+    async def dashboard(request: Request, token: str | None = None) -> Response:
+        """Serve the dashboard to a browser that has the token; ``/?token=...`` stores it in a cookie."""
+        if token is not None:
+            if not same_token(token, expected()):
+                return HTMLResponse(LOCKED_PAGE, status_code=401)
+            redirect = RedirectResponse("/", status_code=303)
+            redirect.set_cookie(COOKIE, expected(), max_age=400 * 86400, httponly=True, samesite="strict")
+            return redirect
+        if not authorized(request):
+            return HTMLResponse(LOCKED_PAGE, status_code=401)
         return FileResponse(STATIC_DIR / "index.html", headers={"Cache-Control": "no-cache"})
 
     return app
@@ -485,7 +529,7 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
-def main() -> None:
+def _serve() -> None:
     """Run the LG Thermal Watch API server with uvicorn."""
     import uvicorn
 
@@ -493,7 +537,7 @@ def main() -> None:
     host = os.environ.get("LG_THERMAL_WATCH_HOST", "127.0.0.1")
     port = int(os.environ.get("LG_THERMAL_WATCH_PORT", "8000"))
     _LOGGER.info(
-        "Starting LG Thermal Watch on %s:%d (db=%s, config=%s, system tz=%s)",
+        "Starting LG Thermal Watch on %s:%d (db=%s, config=%s, system tz=%s); `lg-thermal-watch token` prints the link",
         host,
         port,
         DB_PATH,
@@ -501,6 +545,64 @@ def main() -> None:
         system_timezone_name(),
     )
     uvicorn.run(app, host=host, port=port, log_level="info")
+
+
+def _token_link(as_json: bool) -> None:
+    """
+    Print the API token and the dashboard link that stores it in the browser.
+
+    :param as_json: Print JSON instead of text
+    """
+    token = resolve_token()
+    host = os.environ.get("LG_THERMAL_WATCH_HOST", "127.0.0.1")
+    shown = "127.0.0.1" if host in ("0.0.0.0", "::", "") else host  # nosec B104: comparing, not binding
+    port = int(os.environ.get("LG_THERMAL_WATCH_PORT", "8000"))
+    link = f"http://{shown}:{port}/?token={token}"
+    if as_json:
+        print(json.dumps({"token": token, "dashboard": link}))
+        return
+    print(f"dashboard: {link}")
+    print("API calls: send the header 'Authorization: Bearer <token>'. Keep the link private: it controls the unit.")
+
+
+def main(argv: list[str] | None = None) -> None:
+    """
+    Run the command line: ``serve`` (the default), ``token``, ``mcp``, ``guide`` or ``man``.
+
+    :param argv: Arguments without the program name; ``sys.argv`` when omitted
+    """
+    import argparse
+    import sys
+
+    from lg_thermal_watch import __version__, docs
+
+    parser = argparse.ArgumentParser(
+        prog="lg-thermal-watch",
+        description="Night watch, temperature log and dashboard for an LG heat pump on the LG ThinQ Connect API.",
+    )
+    parser.add_argument("--version", action="version", version=f"lg-thermal-watch {__version__}")
+    sub = parser.add_subparsers(dest="command")
+    sub.add_parser("serve", help="run the service and the dashboard (the default)")
+    token = sub.add_parser("token", help="print the API token and the dashboard link")
+    token.add_argument("--json", action="store_true", help="print JSON")
+    sub.add_parser("mcp", help="serve the running service's tools to AI agents over MCP, on stdio")
+    sub.add_parser("guide", help="print the full manual, for people and agents")
+    man = sub.add_parser("man", help="show the man page")
+    man.add_argument("--install", action="store_true", help="install it so `man lg-thermal-watch` works")
+    man.add_argument("--raw", action="store_true", help="print the roff source")
+    args = parser.parse_args(sys.argv[1:] if argv is None else argv)
+    if args.command == "token":
+        _token_link(args.json)
+    elif args.command == "mcp":
+        from lg_thermal_watch import mcp
+
+        mcp.serve_stdio()
+    elif args.command == "guide":
+        print(docs.manual(), end="")
+    elif args.command == "man":
+        docs.show_man(args.install, args.raw)
+    else:
+        _serve()
 
 
 if __name__ == "__main__":

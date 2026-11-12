@@ -1,0 +1,16 @@
+---
+name: Feature request
+description: A unit, a setting or a chart lg-thermal-watch should support
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you cannot do today, and with which LG unit.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help

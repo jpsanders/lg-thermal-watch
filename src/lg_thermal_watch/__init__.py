@@ -1,4 +1,4 @@
-"""LG Thermal Watch - local AI control and telemetry for the LG PC18SK heat pump."""
+"""LG Thermal Watch: a night watch, a temperature log and a dashboard for an LG heat pump."""
 
 from lg_thermal_watch.agent import LGPC18SKAgent
 from lg_thermal_watch.controller import ThinQAgentController
@@ -12,4 +12,9 @@ __all__ = [
     "ThinQAgentController",
 ]
 
-__version__ = "0.1.0"
+try:
+    from importlib.metadata import PackageNotFoundError, version
+
+    __version__ = version("lg-thermal-watch")
+except PackageNotFoundError:  # running from a source tree, as the systemd unit in the README does
+    __version__ = "0.0.0+source"

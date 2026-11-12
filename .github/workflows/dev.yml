@@ -1,5 +1,5 @@
 ---
-name: lg-thermal-watch-ci
+name: ci
 
 on:
   push:
@@ -14,18 +14,56 @@ on:
 jobs:
   lint:
     uses: "./.github/workflows/python-checks.yml"
-    secrets:
-      # This will allow installing pip packages from a package repository.
-      package-repo: ${{ secrets.PKG_REPOSITORY }}
+    with:
+      python-version: "3.15"
+
   test:
     needs: lint
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
+        os: ["ubuntu-latest", "macos-latest"]
+        python-version: ["3.14", "3.15"]
     uses: "./.github/workflows/python-tests.yml"
     with:
+      os: ${{ matrix.os }}
       python-version: ${{ matrix.python-version }}
-      enable-lfs: false
-      checkout-fetch-depth: 1
-    secrets:
-      package-repo: ${{ secrets.PKG_REPOSITORY }}
+
+  # Proves the built wheel installs on its own, serves the dashboard and refuses calls without the token.
+  package:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: "Set up Python"
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.15"
+
+      - name: "Build the wheel and the sdist"
+        run: |
+          python -m pip install build
+          python -m build -o dist
+
+      - name: "Install the wheel in a clean environment and run it"
+        env:
+          XDG_STATE_HOME: ${{ runner.temp }}/state
+          XDG_DATA_HOME: ${{ runner.temp }}/data
+          XDG_CONFIG_HOME: ${{ runner.temp }}/config
+        run: |
+          python -m venv /tmp/clean
+          /tmp/clean/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/clean/bin/lg-thermal-watch --version
+          /tmp/clean/bin/lg-thermal-watch guide | head -3
+          /tmp/clean/bin/lg-thermal-watch man --raw | head -1
+          /tmp/clean/bin/lg-thermal-watch serve > serve.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/api/health && break; sleep 1; done
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/overview)" = 401
+          token=$(/tmp/clean/bin/lg-thermal-watch token --json | python -c 'import sys,json; print(json.load(sys.stdin)["token"])')
+          curl -sf -H "Authorization: Bearer $token" http://127.0.0.1:8000/api/nightwatch/config
+          kill %1
