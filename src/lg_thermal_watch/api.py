@@ -78,16 +78,6 @@ class NightWatchConfig(BaseModel):
     fan_low: bool = Field(default=True, description="Fan speed LOW during gentle heat.")
     night_start_hour: int = Field(default=0, ge=0, le=23, description="Night window start hour (0-23).")
     night_end_hour: int = Field(default=7, ge=0, le=23, description="Night window end hour (0-23, exclusive).")
-    enforce_off_hours: bool = Field(
-        default=True,
-        description="Power the unit back off whenever it turns on outside the night window.",
-    )
-    day_override_minutes: int = Field(
-        default=120,
-        ge=0,
-        le=720,
-        description="After Heat now, the out-of-window guard pauses for this long (minutes).",
-    )
     timezone: str | None = Field(
         default=None,
         validate_default=True,
@@ -243,8 +233,6 @@ def _apply_config(watch: LGPC18SKNightWatch, config: NightWatchConfig) -> None:
     watch.night_start_hour = config.night_start_hour
     watch.night_end_hour = config.night_end_hour
     watch.timezone_name = config.timezone
-    watch.enforce_off_hours = config.enforce_off_hours
-    watch.day_override_minutes = float(config.day_override_minutes)
     if retarget:
         watch.settings_changed()
 
@@ -415,14 +403,11 @@ def create_app() -> FastAPI:
             await _device_call(agent.set_target_temperature(request.target_c, job_mode="HEAT"))
         if "set_fan_speed" in plan:
             await _device_call(agent.set_fan_speed("LOW"))
-        # The user asked for this heat: pause the out-of-window guard so it is not switched back off.
-        until = get_night_watch().allow_daytime()
         return {
             "ok": True,
             "target_c": request.target_c,
             "fan_low": request.fan_low,
             "commands": plan,
-            "day_override_until": until.isoformat(timespec="seconds"),
         }
 
     @app.post("/api/device/off")
@@ -430,9 +415,6 @@ def create_app() -> FastAPI:
         """Turn the unit off."""
         agent = _require_agent()
         await _device_call(agent.turn_off())
-        watch = _night_watch
-        if watch is not None:
-            watch.clear_day_allowance()
         return {"ok": True}
 
     @app.get("/api/nightwatch")
