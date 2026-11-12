@@ -172,6 +172,13 @@ The night watch is configured via `NightWatchConfig` (from the dashboard or the 
   system zone). Pin this when the server runs in a different zone from the room — the window is wall-clock
   time *here*, not the heat pump's or the server's.
 - `enabled` — whether the watch runs; persisted, so it survives restarts.
+- `enforce_off_hours` — the out-of-window guard (default `true`): when the unit turns on outside the
+  night window — an app schedule, another machine, anything — the watch switches it back off within
+  one poll cycle and records an `out_of_window_off` event, so the unit only ever runs under the
+  night-watch criteria.
+- `day_override_minutes` — how long Heat now pauses the guard (default `120`): a deliberate daytime
+  heat session started from the dashboard is not fought by the guard until this expires; Turn off
+  revokes it immediately.
 
 Behaviour worth knowing:
 

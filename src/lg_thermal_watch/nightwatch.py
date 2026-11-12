@@ -32,6 +32,8 @@ DEFAULT_NIGHT_END_HOUR = 7
 DEFAULT_POWER_ON_SETTLE_S = 2.0
 # A persisted "heating" flag older than this is ignored on start-up (the unit may have been used by hand since).
 STATE_MAX_AGE = timedelta(hours=2)
+# After a dashboard "Heat now" the out-of-window guard leaves the unit alone for this long (minutes).
+DEFAULT_DAY_OVERRIDE_MINUTES = 120.0
 
 EventSink = Callable[[str, str, float | None], None]
 
@@ -110,6 +112,8 @@ class LGPC18SKNightWatch:
         event_sink: EventSink | None = None,
         state_path: str | Path | None = None,
         power_on_settle_s: float = DEFAULT_POWER_ON_SETTLE_S,
+        enforce_off_hours: bool = True,
+        day_override_minutes: float = DEFAULT_DAY_OVERRIDE_MINUTES,
     ) -> None:
         """Initialise the night watch; ``timezone_name`` is an IANA zone (default: the system's local zone)."""
         self.agent = agent
@@ -124,6 +128,9 @@ class LGPC18SKNightWatch:
         self.event_sink = event_sink
         self.state_path = Path(state_path) if state_path is not None else None
         self.power_on_settle_s = power_on_settle_s
+        self.enforce_off_hours = enforce_off_hours
+        self.day_override_minutes = day_override_minutes
+        self._day_override_until: datetime | None = None
         self._running = False
         self._task: asyncio.Task[Any] | None = None
         self._heating = False
@@ -238,6 +245,30 @@ class LGPC18SKNightWatch:
         if self._heating:
             self._setup_pending = True
 
+    # ------------------------------------------------------------------ daytime allowance
+
+    def allow_daytime(self, minutes: float | None = None) -> datetime:
+        """
+        Grant a daytime heat allowance: the out-of-window guard will not turn the unit off until it expires.
+
+        Used by the dashboard's Heat now action, so a deliberate manual heat session is not fought by the guard.
+        :returns: The expiry instant (watch-local wall time).
+        """
+        span = self.day_override_minutes if minutes is None else minutes
+        until = self.now() + timedelta(minutes=span)
+        self._day_override_until = until
+        _LOGGER.info("Night watch: daytime heat allowed until %s (out-of-window guard paused)", _iso(until))
+        return until
+
+    def clear_day_allowance(self) -> None:
+        """Revoke any daytime heat allowance, re-arming the out-of-window guard immediately."""
+        self._day_override_until = None
+
+    @property
+    def day_override_until(self) -> datetime | None:
+        """Return when the current daytime heat allowance expires, or None."""
+        return self._day_override_until
+
     # ------------------------------------------------------------------ logic
 
     async def _tick(self) -> None:
@@ -247,6 +278,8 @@ class LGPC18SKNightWatch:
         if not self._in_night_window(now):
             if self._heating:
                 await self._stop_heating("night window ended")
+            elif self.enforce_off_hours:
+                await self._guard_off_hours(now)
             return
 
         status = await self.agent.get_device_status()
@@ -305,6 +338,31 @@ class LGPC18SKNightWatch:
             await self.agent.set_fan_speed("LOW")
         self._setup_pending = False
         self._save_state()
+
+    async def _guard_off_hours(self, now: datetime) -> None:
+        """
+        Enforce the criteria outside the night window: any power-on there is switched back off.
+
+        The unit must only run under the night-watch criteria, so when it is found on out of window
+        (an app schedule, another box, anything) the guard powers it off within one poll cycle. A
+        daytime heat allowance (granted by Heat now) pauses the guard until it expires.
+        """
+        if self._day_override_until is not None and now < self._day_override_until:
+            return
+        status = await self.agent.get_device_status()
+        if is_powered_on(status) is not True:
+            return
+        room_temp = summarize_status(status)["room_temp_c"]
+        self.last_room_temp_c = room_temp
+        if self._day_override_until is not None and now < self._day_override_until:
+            return  # an allowance was granted while the status was in flight
+        await self.agent.turn_off()
+        self._record(
+            "out_of_window_off",
+            f"Guard: unit was on at {now:%H:%M} outside the "
+            f"{self.night_start_hour:02d}:00-{self.night_end_hour:02d}:00 window - powered off",
+            room_temp,
+        )
 
     async def _stop_heating(
         self, reason: str, room_temp: float | None = None, status: dict[str, Any] | None = None
@@ -414,6 +472,9 @@ class LGPC18SKNightWatch:
             "night_start_hour": self.night_start_hour,
             "night_end_hour": self.night_end_hour,
             "poll_interval_s": self.poll_interval_s,
+            "enforce_off_hours": self.enforce_off_hours,
+            "day_override_minutes": self.day_override_minutes,
+            "day_override_until": _iso(self._day_override_until),
             "heating_since": _iso(self.heating_since),
             "last_tick_at": _iso(self.last_tick_at),
             "last_room_temp_c": self.last_room_temp_c,

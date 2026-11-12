@@ -236,6 +236,79 @@ class TestWindow:
         assert (start.isoformat(), end.isoformat()) == ("2026-11-09T22:00:00+00:00", "2026-11-10T07:00:00+00:00")
 
 
+class TestOutOfWindowGuard:
+    """The guard: outside the window the unit must never stay on, unless Heat now granted an allowance."""
+
+    def make(self, agent: MockAgent, clock: Clock, **kwargs: Any) -> tuple[LGPC18SKNightWatch, list[tuple[str, str]]]:
+        """Build a watch with a recording event sink (mid-afternoon Lisbon by default)."""
+        events: list[tuple[str, str]] = []
+        watch = make_watch(agent, clock, event_sink=lambda kind, detail, temp: events.append((kind, detail)), **kwargs)
+        return watch, events
+
+    def test_unit_on_outside_window_is_powered_off(self) -> None:
+        """An external power-on outside the window (an app schedule, another box) is switched back off."""
+        agent = MockAgent(room_temp=23.5, power="POWER_ON", job_mode="HEAT", target=26, fan="HIGH")
+        clock = Clock(datetime(2026, 11, 10, 14, 0, 0))
+        watch, events = self.make(agent, clock)
+        asyncio.run(watch._tick())
+        assert agent.calls == ["turn_off"]
+        assert agent.power == "POWER_OFF"
+        assert watch.is_heating is False
+        assert [kind for kind, _ in events] == ["out_of_window_off"]
+        assert "outside the 00:00-07:00 window" in events[0][1]
+
+    def test_unit_off_outside_window_is_untouched(self) -> None:
+        """When the unit is off out of window, the guard does nothing (and does not poll more than needed)."""
+        agent = MockAgent(room_temp=23.5, power="POWER_OFF")
+        clock = Clock(datetime(2026, 11, 10, 14, 0, 0))
+        watch, events = self.make(agent, clock)
+        asyncio.run(watch._tick())
+        assert agent.calls == []
+        assert events == []
+
+    def test_heat_now_allowance_pauses_the_guard(self) -> None:
+        """A daytime allowance (Heat now) lets the unit run; once it expires the guard takes over again."""
+        agent = MockAgent(room_temp=23.5, power="POWER_ON", job_mode="HEAT", target=26, fan="HIGH")
+        clock = Clock(datetime(2026, 11, 10, 14, 0, 0))
+        watch, events = self.make(agent, clock)
+        watch.allow_daytime(minutes=120)
+        asyncio.run(watch._tick())
+        assert agent.calls == []  # still within the two-hour allowance
+        clock.value = datetime(2026, 11, 10, 16, 1, 0)
+        asyncio.run(watch._tick())
+        assert agent.calls == ["turn_off"]
+        assert [kind for kind, _ in events] == ["out_of_window_off"]
+
+    def test_clearing_the_allowance_rearms_the_guard(self) -> None:
+        """Revoking the allowance (e.g. Turn off) re-arms the guard immediately."""
+        agent = MockAgent(room_temp=23.5, power="POWER_ON", job_mode="HEAT", target=26, fan="HIGH")
+        clock = Clock(datetime(2026, 11, 10, 14, 0, 0))
+        watch, events = self.make(agent, clock)
+        watch.allow_daytime(minutes=120)
+        watch.clear_day_allowance()
+        asyncio.run(watch._tick())
+        assert agent.calls == ["turn_off"]
+        assert events != []
+
+    def test_guard_can_be_disabled(self) -> None:
+        """With the guard disabled the watch leaves the unit alone outside the window (old behaviour)."""
+        agent = MockAgent(room_temp=23.5, power="POWER_ON", job_mode="HEAT", target=26, fan="HIGH")
+        clock = Clock(datetime(2026, 11, 10, 14, 0, 0))
+        watch, events = self.make(agent, clock, enforce_off_hours=False)
+        asyncio.run(watch._tick())
+        assert agent.calls == []
+        assert events == []
+
+    def test_window_still_opens_normally_with_guard_enabled(self) -> None:
+        """The guard must not interfere with the in-window logic: a cold room still triggers the heat sequence."""
+        agent = MockAgent(room_temp=19.0, power="POWER_OFF")
+        clock = Clock(datetime(2026, 11, 10, 2, 0, 0))
+        watch, events = self.make(agent, clock)
+        asyncio.run(watch._tick())
+        assert agent.calls == HEAT_SEQUENCE
+        assert [kind for kind, _ in events] == ["heat_start"]
+
+
 class TestResilience:
     def test_failed_setup_is_retried_next_tick(self) -> None:
         """A command failing mid-sequence leaves the watch owning the unit and sending only what's missing next."""
