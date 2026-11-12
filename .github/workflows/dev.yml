@@ -64,6 +64,7 @@ jobs:
           /tmp/clean/bin/lg-thermal-watch serve > serve.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/api/health && break; sleep 1; done
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/overview)" = 401
-          token=$(/tmp/clean/bin/lg-thermal-watch token --json | python -c 'import sys,json; print(json.load(sys.stdin)["token"])')
+          token=$(/tmp/clean/bin/lg-thermal-watch token --json \
+            | python -c 'import sys,json; print(json.load(sys.stdin)["token"])')
           curl -sf -H "Authorization: Bearer $token" http://127.0.0.1:8000/api/nightwatch/config
           kill %1

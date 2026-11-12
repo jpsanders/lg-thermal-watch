@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import sqlite3
 from collections.abc import Callable
 from datetime import datetime, timezone
@@ -22,7 +23,9 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_DB_PATH = "/tmp/opencode/lg_thinq_room_temps.db"  # nosec B108
+DEFAULT_DB_PATH = str(
+    Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "lg-thermal-watch" / "room_temps.db"
+)
 DEFAULT_INTERVAL_S = 60.0
 # Sentinels for open-ended windows: every canonical timestamp sorts between these.
 _TS_MIN = ""
