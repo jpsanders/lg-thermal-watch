@@ -10,7 +10,7 @@
     {
       "name": "lg-thermal-watch",
       "description": "A skill and an MCP server for an LG heat pump run by lg-thermal-watch on your machine.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "source": "./",
       "category": "productivity",
       "homepage": "https://github.com/jpsanders/lg-thermal-watch"

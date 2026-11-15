@@ -4,7 +4,7 @@
 > night watch heats gently when the room gets cold at night; the API needs a token; an MCP server lets AI agents
 > read the room and, when asked, switch the heat.
 
-Install: `uv tool install git+https://github.com/jpsanders/lg-thermal-watch@1.0.0`, set the `LG_THINQ_*`
+Install from PyPI: `uv tool install lg-thermal-watch`, set the `LG_THINQ_*`
 credentials, run `lg-thermal-watch` (or as a systemd user service), then `lg-thermal-watch token` for the dashboard.
 
 ## Docs
